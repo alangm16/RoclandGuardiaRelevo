@@ -188,4 +188,20 @@ public partial class MainViewModel : BaseViewModel
         "Expirado" => "⌛ Expirado",
         _ => estado
     };
+
+    [RelayCommand]
+    private async Task CerrarSesionAsync()
+    {
+        // Preguntar para evitar cierres por toques accidentales
+        bool respuesta = await Shell.Current.DisplayAlert("Cerrar sesión", "¿Estás seguro que deseas salir de tu cuenta?", "Sí, salir", "Cancelar");
+
+        if (respuesta)
+        {
+            // Limpiamos los datos guardados de la sesión
+            _auth.CerrarSesion();
+
+            // Redirigimos a la ruta raíz del login
+            await Shell.Current.GoToAsync("//LoginPage");
+        }
+    }
 }

@@ -19,4 +19,6 @@
 
     <ShellContent Route="RondinPage" ContentTemplate="{DataTemplate views:RondinPage}" Shell.NavBarIsVisible="False"/>
 
+    <ShellContent Route="FirmaPage" ContentTemplate="{DataTemplate views:FirmaPage}" Shell.NavBarIsVisible="False"/>
+
 </Shell>

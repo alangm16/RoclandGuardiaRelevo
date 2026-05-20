@@ -24,7 +24,7 @@ public partial class LoginViewModel : BaseViewModel
     [RelayCommand]
     private async Task IniciarSesionAsync()
     {
-        if(string.IsNullOrWhiteSpace(Usuario) || string.IsNullOrWhiteSpace(Password))
+        if (string.IsNullOrWhiteSpace(Usuario) || string.IsNullOrWhiteSpace(Password))
         {
             MostrarError("Ingresa usuario y contraseña.");
             return;
@@ -35,31 +35,22 @@ public partial class LoginViewModel : BaseViewModel
 
         try
         {
-            var loginResponse = await _api.LoginDirectoAsync(Usuario, Password);
+            // Usamos el AuthStateService que centraliza y orquesta el login completo
+            var exito = await _auth.IniciarSesionAsync(Usuario, Password);
 
-            if(loginResponse == null || string.IsNullOrEmpty(loginResponse.Token))
+            if (exito)
             {
-                MostrarError("Credenciales inválidas.");
-                return;
+                await Shell.Current.GoToAsync("//MainPage");
             }
-
-            _api.SetAuthToken(loginResponse.Token);
-
-            var perfil = await _api.ObtenerMiPerfilAsync();
-
-            if (perfil is null)
+            else
             {
-                MostrarError("No tienes un perfil asignado en Guardia Relevo.");
-                return;
+                // El mensaje es más amplio, porque el error real puede ser de roles o credenciales
+                MostrarError("Error: Credenciales inválidas, usuario sin rol de 'Guardia' o sin perfil asignado.");
             }
-
-            _auth.GuardarSesion(loginResponse.Token, perfil.NombreCompleto, perfil.PerfilId);
-
-            await Shell.Current.GoToAsync("//MainPage");
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            MostrarError("Error al iniciar sesión. Intenta nuevamente.");
+            MostrarError("Ocurrió un error inesperado de conexión.");
         }
         finally
         {
@@ -81,31 +72,21 @@ public partial class LoginViewModel : BaseViewModel
 
         try
         {
-            var loginResponse = await _api.LoginQrAsync(qr);
+            var exito = await _auth.IniciarSesionPorQrAsync(qr);
 
-            if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token))
+            if (exito)
             {
-                MostrarError("Código QR inválido o expirado.");
-                return;
+                await Shell.Current.GoToAsync("//MainPage");
             }
-
-            _api.SetAuthToken(loginResponse.Token);
-
-            var perfil = await _api.ObtenerMiPerfilAsync();
-
-            if (perfil is null)
+            else
             {
-                MostrarError("No tienes un perfil asignado en Guardia Relevo.");
-                return;
+                MostrarError("Error al iniciar sesión con QR. Verifica que el código sea correcto y que tu usuario tenga un perfil asignado.");
             }
-
-            _auth.GuardarSesion(loginResponse.Token, perfil.NombreCompleto, perfil.PerfilId);
-
-            await Shell.Current.GoToAsync("//MainPage");
+      
         }
         catch (Exception ex)
         {
-            MostrarError("Error al iniciar sesión con QR. Intenta nuevamente.");
+            MostrarError("Ocurrión un error inesperado.");
         }
         finally
         {

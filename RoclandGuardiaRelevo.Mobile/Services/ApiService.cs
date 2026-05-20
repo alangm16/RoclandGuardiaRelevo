@@ -71,14 +71,36 @@ public class ApiService
                 CodigoProyecto = AppConstants.CodigoProyectoGuardiaRelevo,
                 Plataforma = AppConstants.PlataformaMobile
             };
+
             var response = await _http.PostAsJsonAsync("api/superadmin/Auth/login-directo", payload);
-            if (!response.IsSuccessStatusCode) return null;
             var rawJson = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // Mostrar error del servidor en pantalla
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Shell.Current.DisplayAlert("Error Backend", $"Status: {response.StatusCode}\n{rawJson}", "OK");
+                });
+                return null;
+            }
+
+            // 🚨 MOSTRAR EL JSON CRUDO EN PANTALLA 🚨
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                await Shell.Current.DisplayAlert("JSON Exitoso Recibido", rawJson, "OK");
+            });
+
+            // Intentamos deserializar
             return JsonSerializer.Deserialize<LoginResponse>(rawJson, JsonOpts);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"LoginDirectoAsync error: {ex.Message}");
+            // 🚨 MOSTRAR EL ERROR DE DESERIALIZACIÓN EN PANTALLA 🚨
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                await Shell.Current.DisplayAlert("Error al convertir JSON", ex.Message, "OK");
+            });
             return null;
         }
     }
@@ -111,11 +133,20 @@ public class ApiService
         try
         {
             var response = await _http.GetAsync($"{ApiBasePath}/Auth/mi-perfil");
-            if (!response.IsSuccessStatusCode) return null;
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // Leer el mensaje de error del backend (el Forbid o el Unauthorized)
+                var errorContent = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"[API ERROR] mi-perfil falló: {response.StatusCode} - {errorContent}");
+                return null;
+            }
+
             return await response.Content.ReadFromJsonAsync<MiPerfilResponse>(JsonOpts);
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[API EXCEPTION] mi-perfil: {ex.Message}");
             return null;
         }
     }

@@ -4,6 +4,8 @@ using ZXing.Net.Maui.Controls;
 using RoclandGuardiaRelevo.Mobile.Services;
 using RoclandGuardiaRelevo.Mobile.ViewModels;
 using RoclandGuardiaRelevo.Mobile.Views;
+using SkiaSharp.Views.Maui.Controls.Hosting;
+
 namespace RoclandGuardiaRelevo.Mobile
 {
     public static class MauiProgram
@@ -13,6 +15,7 @@ namespace RoclandGuardiaRelevo.Mobile
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
+                .UseSkiaSharp()
                 .UseMauiCommunityToolkit()
                 .UseBarcodeReader()
                 .ConfigureFonts(fonts =>

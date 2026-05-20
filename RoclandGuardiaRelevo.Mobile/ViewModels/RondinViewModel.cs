@@ -144,34 +144,60 @@ public partial class RondinViewModel : BaseViewModel
 
         var firmaVm = new FirmaViewModel();
         var firmaPage = new FirmaPage(firmaVm);
+
+        // 1. Creamos un "semáforo" para obligar a MAUI a esperar a que la ventana se cierre
+        var tcs = new TaskCompletionSource<bool>();
+        firmaPage.Disappearing += (s, e) => tcs.TrySetResult(true);
+
+        // Abrimos la pantalla modal
         await Shell.Current.Navigation.PushModalAsync(firmaPage);
 
+        // 2. DETENEMOS LA EJECUCIÓN AQUÍ hasta que el semáforo dé luz verde (cuando desaparezca la pantalla)
+        await tcs.Task;
+
+        // Cuando la pantalla se cierra, ahora sí evaluamos si firmó o canceló
         if (!firmaVm.FirmaCompletada)
             return;
 
-        var respuestas = todosLosPuntos.Select(p => new GuardarRespuestaRequest
+        // 3. Bloque Try-Catch para diagnosticar o atrapar errores al crear la petición
+        try
         {
-            PuntoId = p.Id,
-            Respuesta = p.Respuesta!.Value,
-            Comentario = p.Comentario
-        }).ToList();
+            // Alerta de diagnóstico temporal (puedes borrarla cuando veas que sí funciona)
+            await Shell.Current.DisplayAlert("Progreso móvil", "Enviando datos al servidor...", "OK");
 
-        var cerrarRequest = new CerrarParticipanteRequest
-        {
-            FirmaBase64 = Convert.ToBase64String(firmaVm.FirmaBytes!),
-            Observaciones = Novedades,
-            Respuestas = respuestas
-        };
+            var respuestas = todosLosPuntos.Select(p => new GuardarRespuestaRequest
+            {
+                PuntoId = p.Id,
+                Respuesta = p.Respuesta!.Value,
+                Comentario = p.Comentario
+            }).ToList();
 
-        var exito = await _api.CerrarParticipanteAsync(participanteId, cerrarRequest);
-        if (exito)
-        {
-            await Shell.Current.DisplayAlert("Éxito", "Rondín finalizado correctamente.", "OK");
-            await Shell.Current.GoToAsync("//MainPage");
+            var cerrarRequest = new CerrarParticipanteRequest
+            {
+                FirmaBase64 = Convert.ToBase64String(firmaVm.FirmaBytes!),
+                Observaciones = Novedades,
+                Respuestas = respuestas
+            };
+
+            var exito = await _api.CerrarParticipanteAsync(participanteId, cerrarRequest);
+
+            if (exito)
+            {
+                await Shell.Current.DisplayAlert("Éxito", "Rondín finalizado correctamente.", "OK");
+                await Shell.Current.GoToAsync("//MainPage");
+            }
+            else
+            {
+                await Shell.Current.DisplayAlert("Error", "El servidor rechazó el cierre del rondín.", "OK");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            await Shell.Current.DisplayAlert("Error", "No se pudo finalizar el rondín.", "OK");
+            // 🔥 CAPTURA EL ERROR OCULTO Y MUÉSTRALO EN PANTALLA 🔥
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                await Shell.Current.DisplayAlert("Error Crítico de Envío", $"Excepción: {ex.Message}\n\nDetalle: {ex.InnerException?.Message}", "OK");
+            });
         }
     }
 

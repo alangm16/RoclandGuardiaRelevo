@@ -67,12 +67,24 @@ public class AuthStateService
         try
         {
             var loginResponse = await _apiService.LoginDirectoAsync(username, password);
-            if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token))
+
+            if (loginResponse == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[AUTH] loginResponse es NULL (probablemente falló la deserialización).");
                 return false;
+            }
+
+            if (string.IsNullOrEmpty(loginResponse.Token))
+            {
+                System.Diagnostics.Debug.WriteLine("[AUTH] Las credenciales son correctas pero el Token llegó vacío. Revisa los [JsonPropertyName] en AppModels.cs.");
+                return false;
+            }
+
             return await ProcesarSesionExitosa(loginResponse);
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[AUTH CRITICAL EXCEPTION] {ex.Message}");
             return false;
         }
     }

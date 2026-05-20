@@ -24,7 +24,7 @@ namespace RoclandGuardiaRelevo.Mobile
             try
             {
                 sesionRestaurada = await _auth.RestaurarSesionAsync();
-                await Shell.Current.GoToAsync(sesionRestaurada ? "//LoginPage" : "//LoginPage");
+                await Shell.Current.GoToAsync(sesionRestaurada ? "//MainPage" : "//LoginPage");
             }
             catch (Exception ex)
             {
