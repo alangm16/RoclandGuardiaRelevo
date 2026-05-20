@@ -1,0 +1,235 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="RoclandGuardiaRelevo.Mobile.Views.MainPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RoclandGuardiaRelevo.Mobile.ViewModels"
+
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="#F0F4F0">
+
+    <RefreshView IsRefreshing="{Binding EstaCargando}"
+                 Command="{Binding CargarRelevoCommand}">
+        <ScrollView>
+            <VerticalStackLayout Spacing="0" Padding="0,0,0,24">
+
+                <!-- ══ CABECERA VERDE ══ -->
+                <Grid HeightRequest="130" BackgroundColor="#1B3A1B">
+                    <Grid.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#1B3A1B" Offset="0.0"/>
+                            <GradientStop Color="#2D6A2D" Offset="1.0"/>
+                        </LinearGradientBrush>
+                    </Grid.Background>
+                    <Grid ColumnDefinitions="*,Auto" Padding="20,0" VerticalOptions="Center">
+                        <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
+                            <Label Text="{Binding FechaHoy}"
+                                   FontSize="11" TextColor="#9DBF9D"/>
+                            <Label Text="{Binding Bienvenida}"
+                                   FontSize="18" FontAttributes="Bold" TextColor="White"/>
+                            <Label Text="{Binding NombreRol}"
+                                   FontSize="12" TextColor="#C8E6C9"/>
+                        </VerticalStackLayout>
+                        <!-- Avatar iniciales -->
+                        <Frame Grid.Column="1"
+                               WidthRequest="44" HeightRequest="44"
+                               CornerRadius="22" Padding="0"
+                               BackgroundColor="#4CAF50"
+                               BorderColor="Transparent"
+                               VerticalOptions="Center">
+                            <Label Text="{Binding Iniciales}"
+                                   FontSize="16" FontAttributes="Bold"
+                                   TextColor="White"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"/>
+                        </Frame>
+                    </Grid>
+                </Grid>
+
+                <!-- ══ TARJETA RELEVO ACTIVO ══ -->
+                <VerticalStackLayout Padding="16,16,16,0" Spacing="12">
+
+                    <!-- Sin relevo asignado -->
+                    <Frame IsVisible="{Binding SinRelevo}"
+                           BackgroundColor="White" CornerRadius="16"
+                           Padding="20" BorderColor="#E0EFE0">
+                        <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
+                            <Label Text="Sin relevo asignado"
+                                   FontSize="16" FontAttributes="Bold"
+                                   TextColor="#1B3A1B" HorizontalOptions="Center"/>
+                            <Label Text="No tienes un relevo activo para hoy."
+                                   FontSize="13" TextColor="#5A7A5A"
+                                   HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+                        </VerticalStackLayout>
+                    </Frame>
+
+                    <!-- Relevo activo -->
+                    <Frame IsVisible="{Binding HayRelevo}"
+                           BackgroundColor="White" CornerRadius="16"
+                           Padding="0" BorderColor="#C8DFC8"
+                           Shadow="{Shadow Brush='#18000000', Offset='0,2', Radius='8'}">
+                        <VerticalStackLayout Spacing="0">
+
+                            <!-- Franja título -->
+                            <Grid BackgroundColor="#1B3A1B"
+                                  Padding="16,12"
+                                  ColumnDefinitions="*,Auto">
+                                <Border.StrokeShape xmlns:Border="http://schemas.microsoft.com/dotnet/2021/maui">
+                                </Border.StrokeShape>
+                                <VerticalStackLayout Grid.Column="0" Spacing="1">
+                                    <Label Text="{Binding TurnoNombre}"
+                                           FontSize="11" TextColor="#9DBF9D"/>
+                                    <Label Text="{Binding RelevoTitulo}"
+                                           FontSize="16" FontAttributes="Bold" TextColor="White"/>
+                                </VerticalStackLayout>
+                                <!-- Badge estado -->
+                                <Frame Grid.Column="1"
+                                       BackgroundColor="#2D6A2D"
+                                       CornerRadius="12" Padding="8,4"
+                                       BorderColor="Transparent"
+                                       VerticalOptions="Center">
+                                    <Label Text="{Binding EstadoBadge}"
+                                           FontSize="11" FontAttributes="Bold"
+                                           TextColor="#A5D6A7"/>
+                                </Frame>
+                            </Grid>
+
+                            <!-- Cuerpo tarjeta -->
+                            <VerticalStackLayout Padding="16,14" Spacing="10">
+
+                                <!-- Guardia saliente -->
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Frame Grid.Column="0"
+                                           WidthRequest="36" HeightRequest="36"
+                                           CornerRadius="18" Padding="0"
+                                           BackgroundColor="#FCE4EC"
+                                           BorderColor="Transparent">
+                                        <Label Text="{Binding InicialSaliente}"
+                                               FontSize="13" FontAttributes="Bold"
+                                               TextColor="#880E4F"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center"/>
+                                    </Frame>
+                                    <VerticalStackLayout Grid.Column="1" Spacing="1" Margin="10,0,0,0" VerticalOptions="Center">
+                                        <Label Text="{Binding NombreSaliente}"
+                                               FontSize="13" FontAttributes="Bold" TextColor="#1B3A1B"/>
+                                        <Label Text="Guardia saliente" FontSize="11" TextColor="#6A8A6A"/>
+                                    </VerticalStackLayout>
+                                    <Frame Grid.Column="2"
+                                           BackgroundColor="#E8F5E9" CornerRadius="10"
+                                           Padding="8,3" BorderColor="Transparent"
+                                           VerticalOptions="Center">
+                                        <Label Text="{Binding EstadoSaliente}"
+                                               FontSize="11" TextColor="#2E7D32"/>
+                                    </Frame>
+                                </Grid>
+
+                                <BoxView HeightRequest="0.5" Color="#E0EFE0"/>
+
+                                <!-- Guardia entrante -->
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Frame Grid.Column="0"
+                                           WidthRequest="36" HeightRequest="36"
+                                           CornerRadius="18" Padding="0"
+                                           BackgroundColor="#C8E6C9"
+                                           BorderColor="Transparent">
+                                        <Label Text="{Binding InicialEntrante}"
+                                               FontSize="13" FontAttributes="Bold"
+                                               TextColor="#1B5E20"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center"/>
+                                    </Frame>
+                                    <VerticalStackLayout Grid.Column="1" Spacing="1" Margin="10,0,0,0" VerticalOptions="Center">
+                                        <Label Text="{Binding NombreEntrante}"
+                                               FontSize="13" FontAttributes="Bold" TextColor="#1B3A1B"/>
+                                        <Label Text="Guardia entrante" FontSize="11" TextColor="#6A8A6A"/>
+                                    </VerticalStackLayout>
+                                    <Frame Grid.Column="2"
+                                           BackgroundColor="#FFF9C4" CornerRadius="10"
+                                           Padding="8,3" BorderColor="Transparent"
+                                           VerticalOptions="Center">
+                                        <Label Text="{Binding EstadoEntrante}"
+                                               FontSize="11" TextColor="#F57F17"/>
+                                    </Frame>
+                                </Grid>
+
+                                <BoxView HeightRequest="0.5" Color="#E0EFE0"/>
+
+                                <!-- Barra progreso rondín -->
+                                <VerticalStackLayout Spacing="4">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <Label Grid.Column="0" Text="Rondín" FontSize="12" TextColor="#5A7A5A"/>
+                                        <Label Grid.Column="1" Text="{Binding ProgresoTexto}"
+                                               FontSize="12" FontAttributes="Bold" TextColor="#1B3A1B"/>
+                                    </Grid>
+                                    <ProgressBar Progress="{Binding ProgresoValor}"
+                                                 ProgressColor="#4CAF50"
+                                                 BackgroundColor="#E8F5E9"
+                                                 HeightRequest="6"/>
+                                </VerticalStackLayout>
+
+                                <!-- Botón acción principal -->
+                                <Button Text="{Binding TextoBotonAccion}"
+                                        Command="{Binding AccionPrincipalCommand}"
+                                        BackgroundColor="#4CAF50"
+                                        TextColor="White"
+                                        FontAttributes="Bold"
+                                        FontSize="15"
+                                        CornerRadius="12"
+                                        HeightRequest="48"
+                                        IsEnabled="{Binding NoEstaCargando}"/>
+
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </Frame>
+
+                    <!-- Cargando -->
+                    <ActivityIndicator IsVisible="{Binding EstaCargando}"
+                                       IsRunning="{Binding EstaCargando}"
+                                       Color="#4CAF50"
+                                       HorizontalOptions="Center"
+                                       Margin="0,8,0,0"/>
+
+                    <!-- ══ HISTORIAL ══ -->
+                    <Label Text="Historial reciente"
+                           FontSize="13" FontAttributes="Bold"
+                           TextColor="#5A7A5A" Margin="4,8,0,0"/>
+
+                    <BindableLayout.EmptyView>
+                        <Label Text="Sin historial disponible."
+                               FontSize="13" TextColor="#9AB09A"
+                               HorizontalOptions="Center" Margin="0,8,0,0"/>
+                    </BindableLayout.EmptyView>
+
+                    <CollectionView ItemsSource="{Binding HistorialRelevos}"
+                                    SelectionMode="Single"
+                                    SelectionChangedCommand="{Binding VerDetalleHistorialCommand}"
+                                    SelectionChangedCommandParameter="{Binding SelectedItem, Source={RelativeSource Self}}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Frame BackgroundColor="White" CornerRadius="12"
+                                       Padding="14,12" Margin="0,0,0,8"
+                                       BorderColor="#E0EFE0">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                            <Label Text="{Binding Titulo}"
+                                                   FontSize="13" FontAttributes="Bold" TextColor="#1B3A1B"/>
+                                            <Label Text="{Binding Subtitulo}"
+                                                   FontSize="11" TextColor="#6A8A6A"/>
+                                        </VerticalStackLayout>
+                                        <Frame Grid.Column="1"
+                                               BackgroundColor="#E8F5E9" CornerRadius="10"
+                                               Padding="8,3" BorderColor="Transparent"
+                                               VerticalOptions="Center">
+                                            <Label Text="Completado" FontSize="11" TextColor="#2E7D32"/>
+                                        </Frame>
+                                    </Grid>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

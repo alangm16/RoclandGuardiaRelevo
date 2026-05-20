@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="RoclandGuardiaRelevo.Mobile.Views.IncidenciaPopup"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RoclandGuardiaRelevo.Mobile.ViewModels"
+             Title="Reportar anomalía">
+    <VerticalStackLayout Padding="20" Spacing="12">
+        <Label Text="{Binding PuntoNombre}" FontSize="16" FontAttributes="Bold" />
+        <Label Text="Motivo / Comentario (obligatorio)" FontSize="12" TextColor="Gray" />
+        <Editor Text="{Binding Comentario}" HeightRequest="100" AutoSize="TextChanges" />
+        <Button Text="Tomar Foto" Command="{Binding TomarFotoCommand}" 
+                BackgroundColor="LightGray" />
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+            <Button Text="Cancelar" Command="{Binding CancelarCommand}" 
+                    BackgroundColor="Gray" TextColor="White"/>
+            <Button Text="Guardar" Command="{Binding GuardarCommand}" 
+                    BackgroundColor="#4CAF50" TextColor="White"/>
+        </Grid>
+        <ActivityIndicator IsVisible="{Binding EstaCargando}" 
+                           IsRunning="{Binding EstaCargando}" />
+    </VerticalStackLayout>
+</ContentPage>

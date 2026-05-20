@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="RoclandGuardiaRelevo.Mobile.Views.RondinPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RoclandGuardiaRelevo.Mobile.ViewModels"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="#F0F4F0">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+        <!-- TOP BAR -->
+        <Grid Grid.Row="0" BackgroundColor="#1B3A1B"
+              ColumnDefinitions="Auto,*,Auto"
+              Padding="12,44,16,12">
+            <Button Grid.Column="0"
+                    Text="‹" FontSize="26" TextColor="White"
+                    BackgroundColor="Transparent" BorderColor="Transparent"
+                    WidthRequest="44" HeightRequest="44"
+                    Padding="0"
+                    Command="{Binding VolverCommand}"/>
+            <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                <Label Text="Rondín de entrega"
+                       FontSize="17" FontAttributes="Bold" TextColor="White"/>
+                <Label Text="{Binding Subtitulo}"
+                       FontSize="11" TextColor="#9DBF9D"/>
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- BARRA PROGRESO -->
+        <Frame Grid.Row="1"
+               BackgroundColor="White" Padding="16,10"
+               CornerRadius="0" BorderColor="#E0EFE0">
+            <VerticalStackLayout Spacing="6">
+                <Label Text="{Binding InstruccionTexto}"
+                       FontSize="12" TextColor="#5A7A5A"/>
+                <Grid ColumnDefinitions="*,Auto">
+                    <ProgressBar Grid.Column="0"
+                                 Progress="{Binding ProgresoValor}"
+                                 ProgressColor="#4CAF50"
+                                 BackgroundColor="#E8F5E9"
+                                 HeightRequest="6"
+                                 VerticalOptions="Center"/>
+                    <Label Grid.Column="1"
+                           Text="{Binding ProgresoTexto}"
+                           FontSize="11" FontAttributes="Bold"
+                           TextColor="#1B3A1B" Margin="8,0,0,0"/>
+                </Grid>
+            </VerticalStackLayout>
+        </Frame>
+
+        <!-- LISTA DE PUNTOS (agrupados por categoría) -->
+        <ScrollView Grid.Row="2">
+            <VerticalStackLayout Padding="16,12,16,4" Spacing="0">
+                <CollectionView ItemsSource="{Binding Categorias}"
+                                SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CategoriaChecklistVm">
+                            <VerticalStackLayout Spacing="6" Margin="0,0,0,14">
+                                <!-- Encabezado categoría -->
+                                <Label Text="{Binding Nombre}"
+                                       FontSize="11" FontAttributes="Bold"
+                                       TextColor="#5A7A5A"
+                                       CharacterSpacing="1"
+                                       Margin="2,0,0,2"
+                                       TextTransform="Uppercase"/>
+
+                                <!-- Puntos de la categoría -->
+                                <CollectionView ItemsSource="{Binding Puntos}"
+                                                SelectionMode="None">
+                                    <CollectionView.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:PuntoChecklistVm">
+                                            <Frame BackgroundColor="White"
+                                                   CornerRadius="12"
+                                                   Padding="12,10"
+                                                   Margin="0,0,0,8"
+                                                   BorderColor="{Binding BorderColor}">
+                                                <VerticalStackLayout Spacing="8">
+                                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                                        <VerticalStackLayout Grid.Column="0" Spacing="1" VerticalOptions="Center">
+                                                            <Label Text="{Binding Nombre}"
+                                                                   FontSize="13" FontAttributes="Bold"
+                                                                   TextColor="#1B3A1B"/>
+                                                            <Label Text="{Binding Descripcion}"
+                                                                   FontSize="11" TextColor="#6A8A6A"
+                                                                   IsVisible="{Binding TieneDescripcion}"/>
+                                                        </VerticalStackLayout>
+
+                                                        <!-- Botones SI/NO -->
+                                                        <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                                                            <Frame Padding="0" CornerRadius="8"
+                                                                   BackgroundColor="{Binding SiBackground}"
+                                                                   BorderColor="{Binding SiBorder}"
+                                                                   WidthRequest="52" HeightRequest="38">
+                                                                <Button Text="✓ SÍ"
+                                                                        FontSize="12" FontAttributes="Bold"
+                                                                        TextColor="{Binding SiTextColor}"
+                                                                        BackgroundColor="Transparent"
+                                                                        BorderColor="Transparent"
+                                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:RondinViewModel}}, Path=ResponderSiCommand}"
+                                                                        CommandParameter="{Binding .}" />
+                                                            </Frame>
+                                                            <Frame Padding="0" CornerRadius="8"
+                                                                   BackgroundColor="{Binding NoBackground}"
+                                                                   BorderColor="{Binding NoBorder}"
+                                                                   WidthRequest="52" HeightRequest="38">
+                                                                <Button Text="✗ NO"
+                                                                        FontSize="12" FontAttributes="Bold"
+                                                                        TextColor="{Binding NoTextColor}"
+                                                                        BackgroundColor="Transparent"
+                                                                        BorderColor="Transparent"
+                                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:RondinViewModel}}, Path=ResponderNoCommand}"
+                                                                        CommandParameter="{Binding .}" />
+                                                            </Frame>
+                                                        </HorizontalStackLayout>
+                                                    </Grid>
+
+                                                    <!-- Panel "NO" expandible -->
+                                                    <VerticalStackLayout IsVisible="{Binding PanelNoVisible}" Spacing="8">
+                                                        <BoxView HeightRequest="0.5" Color="#F5C6C6" Margin="0,2"/>
+                                                        <Frame BackgroundColor="#FFF8F8" CornerRadius="8"
+                                                               Padding="10,8" BorderColor="#F9C8C8">
+                                                            <VerticalStackLayout Spacing="6">
+                                                                <Label Text="Observación (opcional)"
+                                                                       FontSize="11" TextColor="#C62828"/>
+                                                                <Editor Placeholder="Describe qué encontraste..."
+                                                                        PlaceholderColor="#DFA5A5"
+                                                                        TextColor="#1B3A1B"
+                                                                        Text="{Binding Comentario}"
+                                                                        FontSize="13"
+                                                                        AutoSize="TextChanges"
+                                                                        MinimumHeightRequest="60"
+                                                                        BackgroundColor="Transparent"/>
+                                                            </VerticalStackLayout>
+                                                        </Frame>
+                                                        <Button Text="{Binding TextoFoto}"
+                                                                FontSize="12"
+                                                                TextColor="#C62828"
+                                                                BackgroundColor="#FFF0F0"
+                                                                BorderColor="#F9C8C8"
+                                                                CornerRadius="8"
+                                                                HeightRequest="36"
+                                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:RondinViewModel}}, Path=TomarFotoCommand}"
+                                                                CommandParameter="{Binding .}" />
+                                                    </VerticalStackLayout>
+                                                </VerticalStackLayout>
+                                            </Frame>
+                                        </DataTemplate>
+                                    </CollectionView.ItemTemplate>
+                                </CollectionView>
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <!-- Novedades generales -->
+                <Label Text="¿Algo más que reportar del rondín?"
+                       FontSize="12" FontAttributes="Bold"
+                       TextColor="#5A7A5A" Margin="2,4,0,6"/>
+                <Frame BackgroundColor="White" CornerRadius="12"
+                       Padding="12" BorderColor="#D4E4D4">
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="Novedades generales del turno (opcional)"
+                               FontSize="11" TextColor="#9AB09A"/>
+                        <Editor Placeholder="Ej: Llovió toda la noche, hay encharcamientos..."
+                                PlaceholderColor="#AABFAA"
+                                TextColor="#1B3A1B"
+                                Text="{Binding Novedades}"
+                                FontSize="13"
+                                AutoSize="TextChanges"
+                                MinimumHeightRequest="72"
+                                BackgroundColor="Transparent"/>
+                    </VerticalStackLayout>
+                </Frame>
+                <BoxView HeightRequest="12"/>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- BARRA INFERIOR -->
+        <Grid Grid.Row="3"
+              BackgroundColor="White"
+              Padding="16,10,16,28"
+              RowDefinitions="Auto,Auto">
+            <Grid.Shadow>
+                <Shadow Brush="#20000000" Offset="0,-2" Radius="8"/>
+            </Grid.Shadow>
+
+            <Label Grid.Row="0"
+                   Text="{Binding MensajeEnvio}"
+                   FontSize="12" TextColor="#5A7A5A"
+                   HorizontalOptions="Center" Margin="0,0,0,8"/>
+
+            <Button Grid.Row="1"
+                    Text="{Binding TextoBotonEnviar}"
+                    Command="{Binding EnviarRondinCommand}"
+                    BackgroundColor="{Binding ColorBoton}"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    FontSize="15"
+                    CornerRadius="12"
+                    HeightRequest="50"
+                    IsEnabled="{Binding PuedeEnviar}"/>
+        </Grid>
+    </Grid>
+</ContentPage>
