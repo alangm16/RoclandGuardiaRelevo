@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using RoclandGuardiaRelevo.Mobile.Models;
 using RoclandGuardiaRelevo.Mobile.Services;
+using System.Collections.ObjectModel;
 
 namespace RoclandGuardiaRelevo.Mobile.ViewModels;
 
@@ -34,9 +35,11 @@ public partial class MainViewModel : BaseViewModel
     [ObservableProperty] private double progresoValor = 0;
 
     [ObservableProperty] private string textoBotonAccion = "Cargando...";
-    [ObservableProperty] private List<object> historialRelevos = new();
 
-    private MiActivoResponse? miActivo;  // Cambiado de RelevoHoyResponse a MiActivoResponse
+    // Historial tipado correctamente
+    [ObservableProperty] private ObservableCollection<RelevoListResponse> historial = new();
+
+    private MiActivoResponse? miActivo;
 
     public MainViewModel(ApiService api, AuthStateService auth)
     {
@@ -57,7 +60,7 @@ public partial class MainViewModel : BaseViewModel
 
         try
         {
-            // 1. Obtener el relevo activo completo (incluye participanteId, rol, y el objeto Relevo)
+            // 1. Obtener el relevo activo completo
             miActivo = await _api.GetMiRelevoActivoAsync();
 
             if (miActivo == null)
@@ -67,11 +70,10 @@ public partial class MainViewModel : BaseViewModel
                 return;
             }
 
-            var relevo = miActivo.Relevo; // El objeto RelevoHoyResponse
+            var relevo = miActivo.Relevo;
             SinRelevo = false;
             HayRelevo = true;
 
-            // Datos del relevo
             TurnoNombre = relevo.NombreTurno;
             RelevoTitulo = $"Relevo del {relevo.Fecha:dd/MM/yyyy}";
             EstadoBadge = relevo.Estado switch
@@ -83,7 +85,6 @@ public partial class MainViewModel : BaseViewModel
                 _ => relevo.Estado
             };
 
-            // Mostrar datos de ambos guardias
             if (relevo.Saliente != null)
             {
                 NombreSaliente = relevo.Saliente.NombreGuardia;
@@ -97,13 +98,11 @@ public partial class MainViewModel : BaseViewModel
                 EstadoEntrante = FormatearEstado(relevo.Entrante.Estado);
             }
 
-            // Calcular progreso (solo para mi rol)
             var miParticipante = miActivo.Rol == "Saliente" ? relevo.Saliente : relevo.Entrante;
             if (miParticipante != null)
             {
                 int total = miParticipante.TotalOk + miParticipante.TotalNoOk;
                 int contestados = total;
-                // Obtener el total de puntos del checklist dinámicamente
                 var checklist = await _api.GetChecklistPuntosAsync();
                 int totalPuntos = checklist?.Sum(c => c.Puntos.Count) ?? 10;
                 double progreso = totalPuntos > 0 ? (double)contestados / totalPuntos : 0;
@@ -111,7 +110,6 @@ public partial class MainViewModel : BaseViewModel
                 ProgresoTexto = $"{contestados}/{totalPuntos}";
             }
 
-            // Definir texto del botón de acción según estado de mi participante
             TextoBotonAccion = miParticipante?.Estado switch
             {
                 "Pendiente" => "Iniciar turno",
@@ -120,6 +118,9 @@ public partial class MainViewModel : BaseViewModel
                 "Expirado" => "Turno expirado",
                 _ => "Ver detalles"
             };
+
+            // Cargar historial
+            await CargarHistorialAsync();
         }
         catch (Exception ex)
         {
@@ -128,6 +129,15 @@ public partial class MainViewModel : BaseViewModel
         finally
         {
             EstaCargando = false;
+        }
+    }
+
+    private async Task CargarHistorialAsync()
+    {
+        var resultado = await _api.GetHistorialRelevosAsync(1, 10);
+        if (resultado != null)
+        {
+            Historial = new ObservableCollection<RelevoListResponse>(resultado.Items);
         }
     }
 
@@ -144,11 +154,11 @@ public partial class MainViewModel : BaseViewModel
         switch (miParticipante.Estado)
         {
             case "Pendiente":
-                var exito = await _api.IniciarParticipanteAsync(miActivo.ParticipanteId);
-                if (exito)
+                var iniciarResult = await _api.IniciarRondinAsync();
+                if (iniciarResult != null && iniciarResult.Exito)
                     await CargarRelevoAsync();
                 else
-                    await Shell.Current.DisplayAlert("Error", "No se pudo iniciar el turno. Verifica tu horario.", "OK");
+                    await Shell.Current.DisplayAlert("Error", iniciarResult?.Mensaje ?? "No se pudo iniciar el rondín.", "OK");
                 break;
             case "EnCurso":
                 await Shell.Current.GoToAsync($"RondinPage?participanteId={miActivo.ParticipanteId}&rol={miActivo.Rol}&relevoId={miActivo.Relevo.RelevoId}");
@@ -163,12 +173,10 @@ public partial class MainViewModel : BaseViewModel
     }
 
     [RelayCommand]
-    private async Task VerDetalleHistorialAsync(object? selectedItem)
+    private async Task VerDetalleHistorialAsync(RelevoListResponse? item)
     {
-        if (selectedItem is HistorialRelevoItem item)
-        {
-            await Shell.Current.DisplayAlert("Detalle", $"Relevo del {item.Fecha}\nEstado: {item.Estado}", "OK");
-        }
+        if (item == null) return;
+        await Shell.Current.GoToAsync($"RelevoDetallePage?relevoId={item.Id}");
     }
 
     private string ObtenerIniciales(string nombreCompleto)
@@ -192,15 +200,10 @@ public partial class MainViewModel : BaseViewModel
     [RelayCommand]
     private async Task CerrarSesionAsync()
     {
-        // Preguntar para evitar cierres por toques accidentales
         bool respuesta = await Shell.Current.DisplayAlert("Cerrar sesión", "¿Estás seguro que deseas salir de tu cuenta?", "Sí, salir", "Cancelar");
-
         if (respuesta)
         {
-            // Limpiamos los datos guardados de la sesión
             _auth.CerrarSesion();
-
-            // Redirigimos a la ruta raíz del login
             await Shell.Current.GoToAsync("//LoginPage");
         }
     }

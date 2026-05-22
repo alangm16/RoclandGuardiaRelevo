@@ -8,11 +8,7 @@ public partial class IncidenciaPopup : ContentPage
     public IncidenciaPopup(int puntoId, string puntoNombre, ApiService api)
     {
         InitializeComponent();
-        var vm = new IncidenciaModalViewModel(api)
-        {
-            PuntoId = puntoId,
-            PuntoNombre = puntoNombre
-        };
+        var vm = new IncidenciaModalViewModel(api, puntoId, puntoNombre);
         BindingContext = vm;
     }
 }

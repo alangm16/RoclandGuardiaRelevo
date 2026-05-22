@@ -63,17 +63,6 @@ public class MiPerfilResponse
     public string? NumeroEmpleado { get; set; }
 }
 
-public class ConfigTurnoResponse
-{
-    public int Id { get; set; }
-    public string Nombre { get; set; }
-    public bool Activo { get; set; }
-    public TimeOnly HoraInicioSaliente { get; set; }
-    public TimeOnly HoraFinSaliente { get; set; }
-    public TimeOnly HoraInicioEntrante { get; set; }
-    public TimeOnly HoraFinEntrante { get; set; }
-}
-
 public class RelevoHoyResponse
 {
     public int RelevoId { get; set; }
@@ -178,16 +167,6 @@ public class CerrarParticipanteRequest
     public string FirmaBase64 { get; set; }
     public string? Observaciones { get; set; }
     public List<GuardarRespuestaRequest> Respuestas { get; set; }
-}
-
-public class HistorialRelevoItem
-{
-    public int Id { get; set; }
-    public DateOnly Fecha { get; set; }
-    public string NombreTurno { get; set; }
-    public string Estado { get; set; }
-    public string? NombreSaliente { get; set; }
-    public string? NombreEntrante { get; set; }
 }
 
 public class PagedResult<T>
@@ -349,4 +328,88 @@ public class ParticipanteResponse
 
     [JsonPropertyName("modificadoPor")]
     public int? ModificadoPor { get; set; }
+}
+
+// Agregar después de ConfigTurnoResponse
+public class ConfigTurnoResponse
+{
+    public int Id { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public bool Activo { get; set; }
+    public TimeOnly HoraInicioSaliente { get; set; }
+    public TimeOnly HoraFinSaliente { get; set; }
+    public TimeOnly HoraInicioEntrante { get; set; }
+    public TimeOnly HoraFinEntrante { get; set; }
+    // Horarios de prueba
+    public TimeOnly? HoraInicioSalientePrueba { get; set; }
+    public TimeOnly? HoraFinSalientePrueba { get; set; }
+    public TimeOnly? HoraInicioEntrantePrueba { get; set; }
+    public TimeOnly? HoraFinEntrantePrueba { get; set; }
+}
+
+// Agregar RelevoListResponse (para historial)
+public class RelevoListResponse
+{
+    public int Id { get; set; }
+    public DateOnly Fecha { get; set; }
+    public string NombreTurno { get; set; } = string.Empty;
+    public string Estado { get; set; } = string.Empty;
+    public string? NombreSaliente { get; set; }
+    public string? NombreEntrante { get; set; }
+    public int TotalIncidenciasAbiertas { get; set; }
+    public int TotalIncidenciasResueltas { get; set; }
+}
+
+// Modelos de respuesta de rondín
+public class IniciarRondinResponse
+{
+    public bool Exito { get; set; }
+    public int CodigoRetorno { get; set; }
+    public string Mensaje { get; set; } = string.Empty;
+    public int? ParticipanteId { get; set; }
+    public int? RelevoId { get; set; }
+    public int? ConfigTurnoId { get; set; }
+    public string? Rol { get; set; }
+}
+
+public class GuardarRespuestaResponse
+{
+    public bool Exito { get; set; }
+    public int CodigoRetorno { get; set; }
+    public string Mensaje { get; set; } = string.Empty;
+    public int? RespuestaId { get; set; }
+}
+
+public class CompletarRondinResponse
+{
+    public bool Exito { get; set; }
+    public int CodigoRetorno { get; set; }
+    public string Mensaje { get; set; } = string.Empty;
+    public bool RelevoCompletado { get; set; }
+    public int? IncidenciasGeneradas { get; set; }
+}
+
+public class CompletarRondinRequest
+{
+    [JsonPropertyName("firmaBase64")]
+    public string FirmaBase64 { get; set; } = string.Empty;
+
+    [JsonPropertyName("observaciones")]
+    public string? Observaciones { get; set; }
+
+    [JsonPropertyName("respuestas")]
+    public List<GuardarRespuestaRequest> Respuestas { get; set; } = new();
+}
+
+// Discrepancia
+public class DiscrepanciaRespuestaResponse
+{
+    public int PuntoId { get; set; }
+    public string NombrePunto { get; set; } = string.Empty;
+    public string CategoriaPunto { get; set; } = string.Empty;
+    public bool? RespuestaSaliente { get; set; }
+    public string? ComentarioSaliente { get; set; }
+    public bool? RespuestaEntrante { get; set; }
+    public string? ComentarioEntrante { get; set; }
+    public bool EsDiscrepancia { get; set; }
 }

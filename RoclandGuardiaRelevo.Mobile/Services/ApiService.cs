@@ -1,5 +1,4 @@
 ﻿using RoclandGuardiaRelevo.Mobile.Models;
-using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -14,7 +13,6 @@ public class ApiService
     private static string BaseUrl => DeviceInfo.Platform == DevicePlatform.Android
         ? AppConstants.BaseUrlAndroid : AppConstants.BaseUrlWindows;
 
-    // Ruta base unificada para todos los endpoints móviles de Guardia Relevo
     private const string ApiBasePath = "api/mob/guardiarelevo";
 
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -77,7 +75,6 @@ public class ApiService
 
             if (!response.IsSuccessStatusCode)
             {
-                // Mostrar error del servidor en pantalla
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
                     await Shell.Current.DisplayAlert("Error Backend", $"Status: {response.StatusCode}\n{rawJson}", "OK");
@@ -85,18 +82,10 @@ public class ApiService
                 return null;
             }
 
-            // 🚨 MOSTRAR EL JSON CRUDO EN PANTALLA 🚨
-            MainThread.BeginInvokeOnMainThread(async () =>
-            {
-                await Shell.Current.DisplayAlert("JSON Exitoso Recibido", rawJson, "OK");
-            });
-
-            // Intentamos deserializar
             return JsonSerializer.Deserialize<LoginResponse>(rawJson, JsonOpts);
         }
         catch (Exception ex)
         {
-            // 🚨 MOSTRAR EL ERROR DE DESERIALIZACIÓN EN PANTALLA 🚨
             MainThread.BeginInvokeOnMainThread(async () =>
             {
                 await Shell.Current.DisplayAlert("Error al convertir JSON", ex.Message, "OK");
@@ -133,29 +122,19 @@ public class ApiService
         try
         {
             var response = await _http.GetAsync($"{ApiBasePath}/Auth/mi-perfil");
-
-            if (!response.IsSuccessStatusCode)
-            {
-                // Leer el mensaje de error del backend (el Forbid o el Unauthorized)
-                var errorContent = await response.Content.ReadAsStringAsync();
-                System.Diagnostics.Debug.WriteLine($"[API ERROR] mi-perfil falló: {response.StatusCode} - {errorContent}");
-                return null;
-            }
-
+            if (!response.IsSuccessStatusCode) return null;
             return await response.Content.ReadFromJsonAsync<MiPerfilResponse>(JsonOpts);
         }
-        catch (Exception ex)
+        catch
         {
-            System.Diagnostics.Debug.WriteLine($"[API EXCEPTION] mi-perfil: {ex.Message}");
             return null;
         }
     }
 
-    // ======================== RELEVO Y PARTICIPANTE ========================
+    // ======================== RELEVO Y RONDÍN ========================
 
     /// <summary>
     /// Obtiene o crea el relevo activo del guardia autenticado, junto con el participante asociado.
-    /// Endpoint principal para la pantalla de inicio.
     /// </summary>
     public async Task<MiActivoResponse?> GetMiRelevoActivoAsync()
     {
@@ -173,7 +152,7 @@ public class ApiService
     }
 
     /// <summary>
-    /// Obtiene el detalle completo de un relevo (participantes, respuestas, incidencias).
+    /// Obtiene el detalle completo de un relevo.
     /// </summary>
     public async Task<RelevoDetalleResponse?> GetRelevoDetalleAsync(int relevoId)
     {
@@ -193,15 +172,35 @@ public class ApiService
     /// <summary>
     /// Obtiene el historial paginado de relevos.
     /// </summary>
-    public async Task<PagedResult<HistorialRelevoItem>?> GetHistorialRelevosAsync(int page = 1, int pageSize = 10)
+    public async Task<PagedResult<RelevoListResponse>?> GetHistorialRelevosAsync(int page = 1, int pageSize = 10)
     {
         SetAuthHeader();
         try
         {
-            var url = $"{ApiBasePath}/Relevo?page={page}&pageSize={pageSize}";
+            var url = $"{ApiBasePath}/Relevo/paged?page={page}&pageSize={pageSize}";
             var response = await _http.GetAsync(url);
             if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<PagedResult<HistorialRelevoItem>>(JsonOpts);
+            return await response.Content.ReadFromJsonAsync<PagedResult<RelevoListResponse>>(JsonOpts);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    // ======================== RONDÍN (iniciar, guardar, completar) ========================
+
+    /// <summary>
+    /// Inicia el rondín automáticamente para el guardia autenticado.
+    /// </summary>
+    public async Task<IniciarRondinResponse?> IniciarRondinAsync()
+    {
+        SetAuthHeader();
+        try
+        {
+            var response = await _http.PostAsync($"{ApiBasePath}/Rondin/iniciar", null);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<IniciarRondinResponse>(JsonOpts);
         }
         catch
         {
@@ -210,45 +209,43 @@ public class ApiService
     }
 
     /// <summary>
-    /// Inicia el turno del participante (cambia estado a EnCurso).
+    /// Guarda la respuesta de un punto del checklist.
     /// </summary>
-    public async Task<bool> IniciarParticipanteAsync(int participanteId, string? observaciones = null)
+    public async Task<GuardarRespuestaResponse?> GuardarRespuestaAsync(int participanteId, GuardarRespuestaRequest request)
     {
         SetAuthHeader();
         try
         {
-            var payload = new IniciarParticipanteRequest { Observaciones = observaciones };
-            var response = await _http.PostAsJsonAsync($"{ApiBasePath}/Participante/{participanteId}/iniciar", payload);
-            return response.IsSuccessStatusCode;
+            var response = await _http.PostAsJsonAsync($"{ApiBasePath}/Rondin/{participanteId}/respuesta", request);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<GuardarRespuestaResponse>(JsonOpts);
         }
         catch
         {
-            return false;
+            return null;
         }
     }
 
     /// <summary>
-    /// Cierra el turno del participante: envía todas las respuestas y la firma.
+    /// Completa el rondín, guarda firma y observaciones.
     /// </summary>
-    public async Task<bool> CerrarParticipanteAsync(int participanteId, CerrarParticipanteRequest request)
+    public async Task<CompletarRondinResponse?> CompletarRondinAsync(int participanteId, CompletarRondinRequest request)
     {
         SetAuthHeader();
         try
         {
-            var response = await _http.PostAsJsonAsync($"{ApiBasePath}/Participante/{participanteId}/cerrar", request);
-            return response.IsSuccessStatusCode;
+            var response = await _http.PostAsJsonAsync($"{ApiBasePath}/Rondin/{participanteId}/completar", request);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<CompletarRondinResponse>(JsonOpts);
         }
         catch
         {
-            return false;
+            return null;
         }
     }
 
     // ======================== CHECKLIST ========================
 
-    /// <summary>
-    /// Obtiene todos los puntos del checklist agrupados por categoría.
-    /// </summary>
     public async Task<List<CategoriaChecklistDto>?> GetChecklistPuntosAsync()
     {
         SetAuthHeader();
@@ -264,26 +261,6 @@ public class ApiService
         }
     }
 
-    /// <summary>
-    /// Guarda o actualiza una respuesta individual del checklist.
-    /// </summary>
-    public async Task<bool> GuardarRespuestaAsync(int participanteId, GuardarRespuestaRequest request)
-    {
-        SetAuthHeader();
-        try
-        {
-            var response = await _http.PostAsJsonAsync($"{ApiBasePath}/Checklist/respuestas/{participanteId}", request);
-            return response.IsSuccessStatusCode;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Obtiene todas las respuestas ya guardadas de un participante (útil para restaurar estado).
-    /// </summary>
     public async Task<List<ChecklistRespuestaResponse>?> GetRespuestasPorParticipanteAsync(int participanteId)
     {
         SetAuthHeader();
@@ -299,11 +276,23 @@ public class ApiService
         }
     }
 
+    public async Task<List<DiscrepanciaRespuestaResponse>?> GetDiscrepanciasAsync(int relevoId)
+    {
+        SetAuthHeader();
+        try
+        {
+            var response = await _http.GetAsync($"{ApiBasePath}/Checklist/discrepancias/{relevoId}");
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<List<DiscrepanciaRespuestaResponse>>(JsonOpts);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     // ======================== INCIDENCIAS ========================
 
-    /// <summary>
-    /// Crea una nueva incidencia (por NoOk o Discrepancia) con foto opcional.
-    /// </summary>
     public async Task<IncidenciaResponse?> CrearIncidenciaAsync(CrearIncidenciaRequest request)
     {
         SetAuthHeader();
@@ -319,9 +308,6 @@ public class ApiService
         }
     }
 
-    /// <summary>
-    /// Obtiene todas las incidencias de un relevo.
-    /// </summary>
     public async Task<List<IncidenciaResponse>?> GetIncidenciasPorRelevoAsync(int relevoId)
     {
         SetAuthHeader();
@@ -337,9 +323,6 @@ public class ApiService
         }
     }
 
-    /// <summary>
-    /// Obtiene el detalle de una incidencia específica.
-    /// </summary>
     public async Task<IncidenciaResponse?> GetIncidenciaDetalleAsync(int incidenciaId)
     {
         SetAuthHeader();
@@ -355,9 +338,6 @@ public class ApiService
         }
     }
 
-    /// <summary>
-    /// Actualiza descripción o foto de una incidencia abierta.
-    /// </summary>
     public async Task<IncidenciaResponse?> ActualizarIncidenciaAsync(int incidenciaId, ActualizarIncidenciaRequest request)
     {
         SetAuthHeader();
@@ -373,17 +353,13 @@ public class ApiService
         }
     }
 
-    // ======================== CONFIGURACIÓN (OPCIONAL) ========================
+    // ======================== CONFIGURACIÓN ========================
 
-    /// <summary>
-    /// Obtiene la lista de configuraciones de turno activas (solo para administración).
-    /// </summary>
-    public async Task<List<ConfigTurnoResponse>?> GetConfigTurnosAsync()
+    public async Task<List<ConfigTurnoResponse>?> GetConfigTurnosActivosAsync()
     {
         SetAuthHeader();
         try
         {
-            // Nota: Este endpoint aún no existe en los controladores; crearlo si se necesita.
             var response = await _http.GetAsync($"{ApiBasePath}/ConfigTurno/activos");
             if (!response.IsSuccessStatusCode) return null;
             return await response.Content.ReadFromJsonAsync<List<ConfigTurnoResponse>>(JsonOpts);

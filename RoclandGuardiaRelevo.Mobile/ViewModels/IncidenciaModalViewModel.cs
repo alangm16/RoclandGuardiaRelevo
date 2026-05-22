@@ -19,9 +19,11 @@ public partial class IncidenciaModalViewModel : ObservableObject
     // Propiedades para resultado
     public bool Aceptado { get; private set; }
 
-    public IncidenciaModalViewModel(ApiService api)
+    public IncidenciaModalViewModel(ApiService api, int puntoId, string puntoNombre)
     {
         _api = api;
+        PuntoId = puntoId;
+        PuntoNombre = puntoNombre;
     }
 
     [RelayCommand]
@@ -50,7 +52,6 @@ public partial class IncidenciaModalViewModel : ObservableObject
     private void Cancelar()
     {
         Aceptado = false;
-        // Cerrar popup
         Shell.Current.Navigation.PopModalAsync();
     }
 

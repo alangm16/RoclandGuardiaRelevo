@@ -107,7 +107,8 @@ public partial class RondinViewModel : BaseViewModel
             Respuesta = respuesta,
             Comentario = comentario
         };
-        var exito = await _api.GuardarRespuestaAsync(participanteId, request);
+        var resultado = await _api.GuardarRespuestaAsync(participanteId, request);
+        bool exito = resultado != null && resultado.Exito;   // ✅ usa la propiedad Exito
         if (exito)
         {
             var punto = todosLosPuntos.First(p => p.Id == puntoId);
@@ -145,26 +146,19 @@ public partial class RondinViewModel : BaseViewModel
         var firmaVm = new FirmaViewModel();
         var firmaPage = new FirmaPage(firmaVm);
 
-        // 1. Creamos un "semáforo" para obligar a MAUI a esperar a que la ventana se cierre
+        // Esperar a que la pantalla de firma se cierre
         var tcs = new TaskCompletionSource<bool>();
         firmaPage.Disappearing += (s, e) => tcs.TrySetResult(true);
 
-        // Abrimos la pantalla modal
         await Shell.Current.Navigation.PushModalAsync(firmaPage);
-
-        // 2. DETENEMOS LA EJECUCIÓN AQUÍ hasta que el semáforo dé luz verde (cuando desaparezca la pantalla)
         await tcs.Task;
 
-        // Cuando la pantalla se cierra, ahora sí evaluamos si firmó o canceló
         if (!firmaVm.FirmaCompletada)
             return;
 
-        // 3. Bloque Try-Catch para diagnosticar o atrapar errores al crear la petición
         try
         {
-            // Alerta de diagnóstico temporal (puedes borrarla cuando veas que sí funciona)
-            await Shell.Current.DisplayAlert("Progreso móvil", "Enviando datos al servidor...", "OK");
-
+            // Preparar las respuestas del checklist
             var respuestas = todosLosPuntos.Select(p => new GuardarRespuestaRequest
             {
                 PuntoId = p.Id,
@@ -172,32 +166,30 @@ public partial class RondinViewModel : BaseViewModel
                 Comentario = p.Comentario
             }).ToList();
 
-            var cerrarRequest = new CerrarParticipanteRequest
+            // Crear la solicitud de cierre usando CompletarRondinRequest
+            var completarRequest = new CompletarRondinRequest
             {
                 FirmaBase64 = Convert.ToBase64String(firmaVm.FirmaBytes!),
                 Observaciones = Novedades,
                 Respuestas = respuestas
             };
 
-            var exito = await _api.CerrarParticipanteAsync(participanteId, cerrarRequest);
+            // Llamar al servicio
+            var resultado = await _api.CompletarRondinAsync(participanteId, completarRequest);
 
-            if (exito)
+            if (resultado != null && resultado.Exito)
             {
                 await Shell.Current.DisplayAlert("Éxito", "Rondín finalizado correctamente.", "OK");
                 await Shell.Current.GoToAsync("//MainPage");
             }
             else
             {
-                await Shell.Current.DisplayAlert("Error", "El servidor rechazó el cierre del rondín.", "OK");
+                await Shell.Current.DisplayAlert("Error", resultado?.Mensaje ?? "El servidor rechazó el cierre del rondín.", "OK");
             }
         }
         catch (Exception ex)
         {
-            // 🔥 CAPTURA EL ERROR OCULTO Y MUÉSTRALO EN PANTALLA 🔥
-            MainThread.BeginInvokeOnMainThread(async () =>
-            {
-                await Shell.Current.DisplayAlert("Error Crítico de Envío", $"Excepción: {ex.Message}\n\nDetalle: {ex.InnerException?.Message}", "OK");
-            });
+            await Shell.Current.DisplayAlert("Error Crítico", $"Excepción: {ex.Message}", "OK");
         }
     }
 

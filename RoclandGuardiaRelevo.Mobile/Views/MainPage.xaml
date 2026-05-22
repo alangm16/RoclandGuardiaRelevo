@@ -3,16 +3,20 @@
              xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:RoclandGuardiaRelevo.Mobile.ViewModels"
-
+             xmlns:converters="clr-namespace:RoclandGuardiaRelevo.Mobile.Converters"
              Shell.NavBarIsVisible="False"
              BackgroundColor="#F0F4F0">
+
+             <ContentPage.Resources>
+                <converters:EstadoColorConverter x:Key="EstadoColorConverter" />
+            </ContentPage.Resources>
 
     <RefreshView IsRefreshing="{Binding EstaCargando}"
                  Command="{Binding CargarRelevoCommand}">
         <ScrollView>
             <VerticalStackLayout Spacing="0" Padding="0,0,0,24">
 
-                <!-- ══ CABECERA VERDE ══ -->
+                <!-- CABECERA VERDE -->
                 <Grid HeightRequest="130" BackgroundColor="#1B3A1B">
                     <Grid.Background>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
@@ -35,7 +39,8 @@
                                BackgroundColor="#4CAF50"
                                BorderColor="Transparent"
                                VerticalOptions="Center"
-                               Margin="0,0,15,0"> <Label Text="{Binding Iniciales}"
+                               Margin="0,0,15,0">
+                            <Label Text="{Binding Iniciales}"
                                    FontSize="16" FontAttributes="Bold"
                                    TextColor="White"
                                    HorizontalOptions="Center"
@@ -53,7 +58,7 @@
                     </Grid>
                 </Grid>
 
-                <!-- ══ TARJETA RELEVO ACTIVO ══ -->
+                <!-- TARJETA RELEVO ACTIVO -->
                 <VerticalStackLayout Padding="16,16,16,0" Spacing="12">
 
                     <!-- Sin relevo asignado -->
@@ -81,8 +86,6 @@
                             <Grid BackgroundColor="#1B3A1B"
                                   Padding="16,12"
                                   ColumnDefinitions="*,Auto">
-                                <Border.StrokeShape xmlns:Border="http://schemas.microsoft.com/dotnet/2021/maui">
-                                </Border.StrokeShape>
                                 <VerticalStackLayout Grid.Column="0" Spacing="1">
                                     <Label Text="{Binding TurnoNombre}"
                                            FontSize="11" TextColor="#9DBF9D"/>
@@ -202,34 +205,34 @@
                            FontSize="13" FontAttributes="Bold"
                            TextColor="#5A7A5A" Margin="4,8,0,0"/>
 
-                    <BindableLayout.EmptyView>
-                        <Label Text="Sin historial disponible."
-                               FontSize="13" TextColor="#9AB09A"
-                               HorizontalOptions="Center" Margin="0,8,0,0"/>
-                    </BindableLayout.EmptyView>
-
-                    <CollectionView ItemsSource="{Binding HistorialRelevos}"
+                    <CollectionView ItemsSource="{Binding Historial}"
                                     SelectionMode="Single"
                                     SelectionChangedCommand="{Binding VerDetalleHistorialCommand}"
                                     SelectionChangedCommandParameter="{Binding SelectedItem, Source={RelativeSource Self}}">
+                        <CollectionView.EmptyView>
+                            <Label Text="Sin historial disponible."
+                                   FontSize="13" TextColor="#9AB09A"
+                                   HorizontalOptions="Center" Margin="0,8,0,0"/>
+                        </CollectionView.EmptyView>
                         <CollectionView.ItemTemplate>
                             <DataTemplate>
-                                <Frame BackgroundColor="White" CornerRadius="12"
+                                <Frame BackgroundColor="{Binding Estado, Converter={StaticResource EstadoColorConverter}}" CornerRadius="12"
                                        Padding="14,12" Margin="0,0,0,8"
                                        BorderColor="#E0EFE0">
-                                    <Grid ColumnDefinitions="*,Auto">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
                                         <VerticalStackLayout Grid.Column="0" Spacing="2">
-                                            <Label Text="{Binding Titulo}"
+                                            <Label Text="{Binding Fecha, StringFormat='{0:dd/MM/yyyy}'}"
                                                    FontSize="13" FontAttributes="Bold" TextColor="#1B3A1B"/>
-                                            <Label Text="{Binding Subtitulo}"
+                                            <Label Text="{Binding NombreTurno}"
                                                    FontSize="11" TextColor="#6A8A6A"/>
                                         </VerticalStackLayout>
-                                        <Frame Grid.Column="1"
-                                               BackgroundColor="#E8F5E9" CornerRadius="10"
-                                               Padding="8,3" BorderColor="Transparent"
-                                               VerticalOptions="Center">
-                                            <Label Text="Completado" FontSize="11" TextColor="#2E7D32"/>
-                                        </Frame>
+                                        <VerticalStackLayout Grid.Column="1" HorizontalOptions="EndAndExpand">
+                                            <Frame BackgroundColor="{Binding Estado, Converter={StaticResource EstadoColorConverter}}"
+                                                   CornerRadius="10" Padding="8,3" BorderColor="Transparent"
+                                                   VerticalOptions="Center">
+                                                <Label Text="{Binding Estado}" FontSize="11" TextColor="White"/>
+                                            </Frame>
+                                        </VerticalStackLayout>
                                     </Grid>
                                 </Frame>
                             </DataTemplate>
