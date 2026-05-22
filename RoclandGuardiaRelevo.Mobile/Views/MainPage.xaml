@@ -7,95 +7,134 @@
              Shell.NavBarIsVisible="False"
              BackgroundColor="#F0F4F0">
 
-             <ContentPage.Resources>
-                <converters:EstadoColorConverter x:Key="EstadoColorConverter" />
-            </ContentPage.Resources>
+    <ContentPage.Resources>
+        <converters:EstadoColorConverter x:Key="EstadoColorConverter" />
+    </ContentPage.Resources>
 
     <RefreshView IsRefreshing="{Binding EstaCargando}"
                  Command="{Binding CargarRelevoCommand}">
         <ScrollView>
-            <VerticalStackLayout Spacing="0" Padding="0,0,0,24">
+            <VerticalStackLayout Spacing="0" Padding="0,0,0,32">
 
-                <!-- CABECERA VERDE -->
-                <Grid HeightRequest="130" BackgroundColor="#1B3A1B">
+                <!-- ══ CABECERA ══ -->
+                <Grid HeightRequest="150">
                     <Grid.Background>
                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                             <GradientStop Color="#1B3A1B" Offset="0.0"/>
                             <GradientStop Color="#2D6A2D" Offset="1.0"/>
                         </LinearGradientBrush>
                     </Grid.Background>
-                    
-                    <Grid ColumnDefinitions="*,Auto,Auto" Padding="20,0" VerticalOptions="Center">
-                        
-                        <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
-                            <Label Text="{Binding FechaHoy}" FontSize="11" TextColor="#9DBF9D"/>
-                            <Label Text="{Binding Bienvenida}" FontSize="18" FontAttributes="Bold" TextColor="White"/>
-                            <Label Text="{Binding NombreRol}" FontSize="12" TextColor="#C8E6C9"/>
+
+                    <Grid ColumnDefinitions="*,Auto,Auto"
+                          Padding="20,0,20,0"
+                          VerticalOptions="Center">
+
+                        <!-- Info usuario -->
+                        <VerticalStackLayout Grid.Column="0" Spacing="3" VerticalOptions="Center">
+                            <Label Text="{Binding FechaHoy}"
+                                   FontSize="11" TextColor="#9DBF9D"
+                                   CharacterSpacing="0.5"/>
+                            <Label Text="{Binding Bienvenida}"
+                                   FontSize="20" FontAttributes="Bold"
+                                   TextColor="White"
+                                   LineBreakMode="TailTruncation"
+                                   MaxLines="1"/>
+                            <Label Text="{Binding NombreRol}"
+                                   FontSize="12" TextColor="#A5D6A7"/>
                         </VerticalStackLayout>
-                       
+
+                        <!-- Avatar -->
                         <Frame Grid.Column="1"
-                               WidthRequest="44" HeightRequest="44"
-                               CornerRadius="22" Padding="0"
-                               BackgroundColor="#4CAF50"
-                               BorderColor="Transparent"
+                               WidthRequest="46" HeightRequest="46"
+                               CornerRadius="23" Padding="0"
+                               BackgroundColor="#388E3C"
+                               BorderColor="#4CAF5055"
                                VerticalOptions="Center"
-                               Margin="0,0,15,0">
+                               Margin="0,0,12,0">
                             <Label Text="{Binding Iniciales}"
-                                   FontSize="16" FontAttributes="Bold"
+                                   FontSize="17" FontAttributes="Bold"
                                    TextColor="White"
                                    HorizontalOptions="Center"
                                    VerticalOptions="Center"/>
                         </Frame>
 
+                        <!-- Botón cerrar sesión -->
                         <ImageButton Grid.Column="2"
                                      Source="icon_logout.png"
-                                     WidthRequest="28" 
-                                     HeightRequest="28"
+                                     WidthRequest="26"
+                                     HeightRequest="26"
                                      VerticalOptions="Center"
                                      BackgroundColor="Transparent"
-                                     Command="{Binding CerrarSesionCommand}" />
-
+                                     Opacity="0.75"
+                                     Command="{Binding CerrarSesionCommand}"/>
                     </Grid>
                 </Grid>
 
-                <!-- TARJETA RELEVO ACTIVO -->
-                <VerticalStackLayout Padding="16,16,16,0" Spacing="12">
+                <!-- ══ CONTENIDO PRINCIPAL ══ -->
+                <VerticalStackLayout Padding="16,18,16,0" Spacing="14">
 
-                    <!-- Sin relevo asignado -->
+                    <!-- Indicador de carga -->
+                    <ActivityIndicator IsVisible="{Binding EstaCargando}"
+                                       IsRunning="{Binding EstaCargando}"
+                                       Color="#4CAF50"
+                                       HorizontalOptions="Center"
+                                       Margin="0,4,0,0"/>
+
+                    <!-- ── Sin relevo ── -->
                     <Frame IsVisible="{Binding SinRelevo}"
-                           BackgroundColor="White" CornerRadius="16"
-                           Padding="20" BorderColor="#E0EFE0">
-                        <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
+                           BackgroundColor="White"
+                           CornerRadius="18"
+                           Padding="28,32"
+                           BorderColor="#D6E8D6"
+                           Shadow="{Shadow Brush='#12000000', Offset='0,3', Radius='10'}">
+                        <VerticalStackLayout Spacing="10" HorizontalOptions="Center">
+                            <Image Source="icon_calendar_off.png"
+                                   WidthRequest="48" HeightRequest="48"
+                                   HorizontalOptions="Center"
+                                   Opacity="0.5"/>
                             <Label Text="Sin relevo asignado"
-                                   FontSize="16" FontAttributes="Bold"
-                                   TextColor="#1B3A1B" HorizontalOptions="Center"/>
+                                   FontSize="17" FontAttributes="Bold"
+                                   TextColor="#1B3A1B"
+                                   HorizontalOptions="Center"/>
                             <Label Text="No tienes un relevo activo para hoy."
-                                   FontSize="13" TextColor="#5A7A5A"
-                                   HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+                                   FontSize="13" TextColor="#6A8A6A"
+                                   HorizontalOptions="Center"
+                                   HorizontalTextAlignment="Center"/>
                         </VerticalStackLayout>
                     </Frame>
 
-                    <!-- Relevo activo -->
+                    <!-- ── Relevo activo ── -->
                     <Frame IsVisible="{Binding HayRelevo}"
-                           BackgroundColor="White" CornerRadius="16"
-                           Padding="0" BorderColor="#C8DFC8"
-                           Shadow="{Shadow Brush='#18000000', Offset='0,2', Radius='8'}">
+                           BackgroundColor="White"
+                           CornerRadius="18"
+                           Padding="0"
+                           BorderColor="#C8DFC8"
+                           Shadow="{Shadow Brush='#18000000', Offset='0,4', Radius='12'}">
                         <VerticalStackLayout Spacing="0">
 
-                            <!-- Franja título -->
+                            <!-- Franja título turno -->
                             <Grid BackgroundColor="#1B3A1B"
-                                  Padding="16,12"
-                                  ColumnDefinitions="*,Auto">
-                                <VerticalStackLayout Grid.Column="0" Spacing="1">
+                                  Padding="18,14"
+                                  ColumnDefinitions="Auto,*,Auto">
+                                <!-- Ícono turno -->
+                                <Image Grid.Column="0"
+                                       Source="icon_shift.png"
+                                       WidthRequest="20" HeightRequest="20"
+                                       VerticalOptions="Center"
+                                       Opacity="0.7"
+                                       Margin="0,0,10,0"/>
+                                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
                                     <Label Text="{Binding TurnoNombre}"
-                                           FontSize="11" TextColor="#9DBF9D"/>
+                                           FontSize="11" TextColor="#9DBF9D"
+                                           CharacterSpacing="0.5"/>
                                     <Label Text="{Binding RelevoTitulo}"
-                                           FontSize="16" FontAttributes="Bold" TextColor="White"/>
+                                           FontSize="16" FontAttributes="Bold"
+                                           TextColor="White"/>
                                 </VerticalStackLayout>
                                 <!-- Badge estado -->
-                                <Frame Grid.Column="1"
+                                <Frame Grid.Column="2"
                                        BackgroundColor="#2D6A2D"
-                                       CornerRadius="12" Padding="8,4"
+                                       CornerRadius="10" Padding="10,5"
                                        BorderColor="Transparent"
                                        VerticalOptions="Center">
                                     <Label Text="{Binding EstadoBadge}"
@@ -104,142 +143,146 @@
                                 </Frame>
                             </Grid>
 
-                            <!-- Cuerpo tarjeta -->
-                            <VerticalStackLayout Padding="16,14" Spacing="10">
+                            <!-- Separador decorativo -->
+                            <BoxView HeightRequest="3" Color="#4CAF50" Opacity="0.4"/>
 
-                                <!-- Guardia saliente -->
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <Frame Grid.Column="0"
-                                           WidthRequest="36" HeightRequest="36"
-                                           CornerRadius="18" Padding="0"
+                            <!-- Guardias: saliente y entrante -->
+                            <Grid ColumnDefinitions="*,Auto,*"
+                                  Padding="16,16,16,14"
+                                  ColumnSpacing="8">
+
+                                <!-- Saliente -->
+                                <VerticalStackLayout Grid.Column="0" Spacing="8">
+                                    <Label Text="SALIENTE"
+                                           FontSize="9" FontAttributes="Bold"
+                                           TextColor="#9DBF9D"
+                                           CharacterSpacing="1.2"
+                                           HorizontalOptions="Center"/>
+                                    <Frame WidthRequest="44" HeightRequest="44"
+                                           CornerRadius="22" Padding="0"
                                            BackgroundColor="#FCE4EC"
-                                           BorderColor="Transparent">
+                                           BorderColor="Transparent"
+                                           HorizontalOptions="Center">
                                         <Label Text="{Binding InicialSaliente}"
-                                               FontSize="13" FontAttributes="Bold"
+                                               FontSize="16" FontAttributes="Bold"
                                                TextColor="#880E4F"
                                                HorizontalOptions="Center"
                                                VerticalOptions="Center"/>
                                     </Frame>
-                                    <VerticalStackLayout Grid.Column="1" Spacing="1" Margin="10,0,0,0" VerticalOptions="Center">
-                                        <Label Text="{Binding NombreSaliente}"
-                                               FontSize="13" FontAttributes="Bold" TextColor="#1B3A1B"/>
-                                        <Label Text="Guardia saliente" FontSize="11" TextColor="#6A8A6A"/>
-                                    </VerticalStackLayout>
-                                    <Frame Grid.Column="2"
-                                           BackgroundColor="#E8F5E9" CornerRadius="10"
-                                           Padding="8,3" BorderColor="Transparent"
-                                           VerticalOptions="Center">
+                                    <Label Text="{Binding NombreSaliente}"
+                                           FontSize="13" FontAttributes="Bold"
+                                           TextColor="#1B3A1B"
+                                           HorizontalOptions="Center"
+                                           HorizontalTextAlignment="Center"
+                                           MaxLines="2"
+                                           LineBreakMode="WordWrap"/>
+                                    <Frame BackgroundColor="#FCE4EC"
+                                           CornerRadius="8" Padding="8,4"
+                                           BorderColor="Transparent"
+                                           HorizontalOptions="Center">
                                         <Label Text="{Binding EstadoSaliente}"
-                                               FontSize="11" TextColor="#2E7D32"/>
+                                               FontSize="11" TextColor="#880E4F"
+                                               HorizontalOptions="Center"/>
                                     </Frame>
-                                </Grid>
+                                </VerticalStackLayout>
 
-                                <BoxView HeightRequest="0.5" Color="#E0EFE0"/>
+                                <!-- Flecha de relevo -->
+                                <VerticalStackLayout Grid.Column="1"
+                                                     VerticalOptions="Center"
+                                                     Spacing="2">
+                                    <BoxView HeightRequest="1" WidthRequest="20"
+                                             Color="#C8DFC8" VerticalOptions="Center"/>
+                                    <Image Source="icon_arrow_right.png"
+                                           WidthRequest="22" HeightRequest="22"
+                                           HorizontalOptions="Center"
+                                           Opacity="0.5"/>
+                                    <BoxView HeightRequest="1" WidthRequest="20"
+                                             Color="#C8DFC8" VerticalOptions="Center"/>
+                                </VerticalStackLayout>
 
-                                <!-- Guardia entrante -->
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <Frame Grid.Column="0"
-                                           WidthRequest="36" HeightRequest="36"
-                                           CornerRadius="18" Padding="0"
+                                <!-- Entrante -->
+                                <VerticalStackLayout Grid.Column="2" Spacing="8">
+                                    <Label Text="ENTRANTE"
+                                           FontSize="9" FontAttributes="Bold"
+                                           TextColor="#9DBF9D"
+                                           CharacterSpacing="1.2"
+                                           HorizontalOptions="Center"/>
+                                    <Frame WidthRequest="44" HeightRequest="44"
+                                           CornerRadius="22" Padding="0"
                                            BackgroundColor="#C8E6C9"
-                                           BorderColor="Transparent">
+                                           BorderColor="Transparent"
+                                           HorizontalOptions="Center">
                                         <Label Text="{Binding InicialEntrante}"
-                                               FontSize="13" FontAttributes="Bold"
+                                               FontSize="16" FontAttributes="Bold"
                                                TextColor="#1B5E20"
                                                HorizontalOptions="Center"
                                                VerticalOptions="Center"/>
                                     </Frame>
-                                    <VerticalStackLayout Grid.Column="1" Spacing="1" Margin="10,0,0,0" VerticalOptions="Center">
-                                        <Label Text="{Binding NombreEntrante}"
-                                               FontSize="13" FontAttributes="Bold" TextColor="#1B3A1B"/>
-                                        <Label Text="Guardia entrante" FontSize="11" TextColor="#6A8A6A"/>
-                                    </VerticalStackLayout>
-                                    <Frame Grid.Column="2"
-                                           BackgroundColor="#FFF9C4" CornerRadius="10"
-                                           Padding="8,3" BorderColor="Transparent"
-                                           VerticalOptions="Center">
+                                    <Label Text="{Binding NombreEntrante}"
+                                           FontSize="13" FontAttributes="Bold"
+                                           TextColor="#1B3A1B"
+                                           HorizontalOptions="Center"
+                                           HorizontalTextAlignment="Center"
+                                           MaxLines="2"
+                                           LineBreakMode="WordWrap"/>
+                                    <Frame BackgroundColor="#E8F5E9"
+                                           CornerRadius="8" Padding="8,4"
+                                           BorderColor="Transparent"
+                                           HorizontalOptions="Center">
                                         <Label Text="{Binding EstadoEntrante}"
-                                               FontSize="11" TextColor="#F57F17"/>
+                                               FontSize="11" TextColor="#2E7D32"
+                                               HorizontalOptions="Center"/>
                                     </Frame>
-                                </Grid>
-
-                                <BoxView HeightRequest="0.5" Color="#E0EFE0"/>
-
-                                <!-- Barra progreso rondín -->
-                                <VerticalStackLayout Spacing="4">
-                                    <Grid ColumnDefinitions="*,Auto">
-                                        <Label Grid.Column="0" Text="Rondín" FontSize="12" TextColor="#5A7A5A"/>
-                                        <Label Grid.Column="1" Text="{Binding ProgresoTexto}"
-                                               FontSize="12" FontAttributes="Bold" TextColor="#1B3A1B"/>
-                                    </Grid>
-                                    <ProgressBar Progress="{Binding ProgresoValor}"
-                                                 ProgressColor="#4CAF50"
-                                                 BackgroundColor="#E8F5E9"
-                                                 HeightRequest="6"/>
                                 </VerticalStackLayout>
 
-                                <!-- Botón acción principal -->
+                            </Grid>
+
+                            <!-- Separador -->
+                            <BoxView HeightRequest="0.5" Color="#E0EFE0" Margin="16,0"/>
+
+                            <!-- Progreso rondín -->
+                            <VerticalStackLayout Padding="16,14,16,4" Spacing="8">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Image Grid.Column="0"
+                                           Source="icon_checklist.png"
+                                           WidthRequest="16" HeightRequest="16"
+                                           VerticalOptions="Center"
+                                           Margin="0,0,6,0"
+                                           Opacity="0.6"/>
+                                    <Label Grid.Column="1"
+                                           Text="Avance del rondín"
+                                           FontSize="12" TextColor="#5A7A5A"
+                                           VerticalOptions="Center"/>
+                                    <Label Grid.Column="2"
+                                           Text="{Binding ProgresoTexto}"
+                                           FontSize="13" FontAttributes="Bold"
+                                           TextColor="#1B3A1B"/>
+                                </Grid>
+                                <ProgressBar Progress="{Binding ProgresoValor}"
+                                             ProgressColor="#4CAF50"
+                                             BackgroundColor="#E8F5E9"
+                                             HeightRequest="8"/>
+                            </VerticalStackLayout>
+
+                            <!-- Botón acción principal -->
+                            <Grid Padding="16,6,16,18">
                                 <Button Text="{Binding TextoBotonAccion}"
                                         Command="{Binding AccionPrincipalCommand}"
-                                        BackgroundColor="#4CAF50"
+                                        BackgroundColor="#2E7D32"
                                         TextColor="White"
                                         FontAttributes="Bold"
                                         FontSize="15"
-                                        CornerRadius="12"
-                                        HeightRequest="48"
-                                        IsEnabled="{Binding NoEstaCargando}"/>
+                                        CornerRadius="14"
+                                        HeightRequest="52"
+                                        IsEnabled="{Binding NoEstaCargando}"
+                                        Shadow="{Shadow Brush='#404CAF50', Offset='0,4', Radius='10'}"/>
+                            </Grid>
 
-                            </VerticalStackLayout>
                         </VerticalStackLayout>
                     </Frame>
 
-                    <!-- Cargando -->
-                    <ActivityIndicator IsVisible="{Binding EstaCargando}"
-                                       IsRunning="{Binding EstaCargando}"
-                                       Color="#4CAF50"
-                                       HorizontalOptions="Center"
-                                       Margin="0,8,0,0"/>
-
-                    <!-- ══ HISTORIAL ══ -->
-                    <Label Text="Historial reciente"
-                           FontSize="13" FontAttributes="Bold"
-                           TextColor="#5A7A5A" Margin="4,8,0,0"/>
-
-                    <CollectionView ItemsSource="{Binding Historial}"
-                                    SelectionMode="Single"
-                                    SelectionChangedCommand="{Binding VerDetalleHistorialCommand}"
-                                    SelectionChangedCommandParameter="{Binding SelectedItem, Source={RelativeSource Self}}">
-                        <CollectionView.EmptyView>
-                            <Label Text="Sin historial disponible."
-                                   FontSize="13" TextColor="#9AB09A"
-                                   HorizontalOptions="Center" Margin="0,8,0,0"/>
-                        </CollectionView.EmptyView>
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Frame BackgroundColor="{Binding Estado, Converter={StaticResource EstadoColorConverter}}" CornerRadius="12"
-                                       Padding="14,12" Margin="0,0,0,8"
-                                       BorderColor="#E0EFE0">
-                                    <Grid ColumnDefinitions="Auto,*,Auto">
-                                        <VerticalStackLayout Grid.Column="0" Spacing="2">
-                                            <Label Text="{Binding Fecha, StringFormat='{0:dd/MM/yyyy}'}"
-                                                   FontSize="13" FontAttributes="Bold" TextColor="#1B3A1B"/>
-                                            <Label Text="{Binding NombreTurno}"
-                                                   FontSize="11" TextColor="#6A8A6A"/>
-                                        </VerticalStackLayout>
-                                        <VerticalStackLayout Grid.Column="1" HorizontalOptions="EndAndExpand">
-                                            <Frame BackgroundColor="{Binding Estado, Converter={StaticResource EstadoColorConverter}}"
-                                                   CornerRadius="10" Padding="8,3" BorderColor="Transparent"
-                                                   VerticalOptions="Center">
-                                                <Label Text="{Binding Estado}" FontSize="11" TextColor="White"/>
-                                            </Frame>
-                                        </VerticalStackLayout>
-                                    </Grid>
-                                </Frame>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-
                 </VerticalStackLayout>
+
             </VerticalStackLayout>
         </ScrollView>
     </RefreshView>

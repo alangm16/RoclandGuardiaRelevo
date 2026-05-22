@@ -7,14 +7,11 @@ namespace RoclandGuardiaRelevo.Mobile.ViewModels;
 public partial class FirmaViewModel : ObservableObject
 {
     public List<SKPath> Paths { get; } = new();
-
     public Action? RequestRedraw { get; set; }
+    public SKSize CanvasSize { get; set; } = new SKSize(800, 400);
 
-    [ObservableProperty]
-    private byte[]? firmaBytes;
-
-    [ObservableProperty]
-    private bool firmaCompletada;
+    [ObservableProperty] private byte[]? firmaBytes;
+    [ObservableProperty] private bool firmaCompletada;
 
     public void Draw(SKCanvas canvas)
     {
@@ -23,7 +20,9 @@ public partial class FirmaViewModel : ObservableObject
         using var paint = new SKPaint
         {
             Color = SKColors.Black,
-            StrokeWidth = 3,
+            StrokeWidth = 3f,
+            StrokeCap = SKStrokeCap.Round,   
+            StrokeJoin = SKStrokeJoin.Round,
             IsAntialias = true,
             Style = SKPaintStyle.Stroke
         };
@@ -42,12 +41,10 @@ public partial class FirmaViewModel : ObservableObject
     [RelayCommand]
     private async Task Aceptar()
     {
-        if (Paths.Count == 0)
-            return;
+        if (Paths.Count == 0) return;
 
-        FirmaBytes = ExportarFirma();
+        FirmaBytes = ExportarFirma((int)CanvasSize.Width, (int)CanvasSize.Height);
         FirmaCompletada = true;
-
         await Shell.Current.Navigation.PopModalAsync();
     }
 
@@ -58,17 +55,13 @@ public partial class FirmaViewModel : ObservableObject
         await Shell.Current.Navigation.PopModalAsync();
     }
 
-    private byte[] ExportarFirma(int width = 400, int height = 200)
+    private byte[] ExportarFirma(int width, int height)
     {
         var info = new SKImageInfo(width, height);
         using var surface = SKSurface.Create(info);
-        var canvas = surface.Canvas;
-
-        Draw(canvas);
-
+        Draw(surface.Canvas);
         using var image = surface.Snapshot();
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-
         return data.ToArray();
     }
 }

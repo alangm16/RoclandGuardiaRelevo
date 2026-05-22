@@ -2,9 +2,6 @@
 
 namespace RoclandGuardiaRelevo.Mobile.Services;
 
-/// <summary>
-/// Mantiene el estado de autenticación durante la sesión de la app.
-/// </summary>
 public class AuthStateService
 {
     public string Token { get; private set; } = string.Empty;
@@ -12,6 +9,7 @@ public class AuthStateService
     public int GuardiaId { get; private set; }
     public bool EstaAutenticado => !string.IsNullOrEmpty(Token);
 
+    private const int SesionMinutos = 2;
     private readonly ApiService _apiService;
 
     public AuthStateService(ApiService apiService)
@@ -24,10 +22,13 @@ public class AuthStateService
         Token = token;
         NombreGuardia = nombre;
         GuardiaId = id;
-        // Persistir en SecureStorage para sobrevivir reinicios
+
+        var expiracion = DateTime.UtcNow.AddMinutes(SesionMinutos).ToString("O");
+
         SecureStorage.Default.SetAsync("jwt_token", token);
         SecureStorage.Default.SetAsync("guardia_nombre", nombre);
         SecureStorage.Default.SetAsync("guardia_id", id.ToString());
+        SecureStorage.Default.SetAsync("sesion_expira", expiracion); // ← timestamp de expiración
     }
 
     public async Task<bool> RestaurarSesionAsync()
@@ -37,9 +38,19 @@ public class AuthStateService
             var token = await SecureStorage.Default.GetAsync("jwt_token");
             var nombre = await SecureStorage.Default.GetAsync("guardia_nombre");
             var idStr = await SecureStorage.Default.GetAsync("guardia_id");
+            var expiraStr = await SecureStorage.Default.GetAsync("sesion_expira");
 
             if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(idStr))
                 return false;
+
+            // Validar expiración
+            if (string.IsNullOrEmpty(expiraStr) ||
+                !DateTime.TryParse(expiraStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out var expira) ||
+                DateTime.UtcNow >= expira)
+            {
+                CerrarSesion(); // limpiar tokens vencidos
+                return false;
+            }
 
             Token = token;
             NombreGuardia = nombre ?? "";
@@ -60,33 +71,20 @@ public class AuthStateService
         SecureStorage.Default.Remove("jwt_token");
         SecureStorage.Default.Remove("guardia_nombre");
         SecureStorage.Default.Remove("guardia_id");
+        SecureStorage.Default.Remove("sesion_expira"); // ← limpiar también el timestamp
     }
+
+    // --- sin cambios abajo ---
 
     public async Task<bool> IniciarSesionAsync(string username, string password)
     {
         try
         {
             var loginResponse = await _apiService.LoginDirectoAsync(username, password);
-
-            if (loginResponse == null)
-            {
-                System.Diagnostics.Debug.WriteLine("[AUTH] loginResponse es NULL (probablemente falló la deserialización).");
-                return false;
-            }
-
-            if (string.IsNullOrEmpty(loginResponse.Token))
-            {
-                System.Diagnostics.Debug.WriteLine("[AUTH] Las credenciales son correctas pero el Token llegó vacío. Revisa los [JsonPropertyName] en AppModels.cs.");
-                return false;
-            }
-
+            if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token)) return false;
             return await ProcesarSesionExitosa(loginResponse);
         }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[AUTH CRITICAL EXCEPTION] {ex.Message}");
-            return false;
-        }
+        catch { return false; }
     }
 
     public async Task<bool> IniciarSesionPorQrAsync(string qrCode)
@@ -94,27 +92,17 @@ public class AuthStateService
         try
         {
             var loginResponse = await _apiService.LoginQrAsync(qrCode);
-            if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token))
-                return false;
+            if (loginResponse == null || string.IsNullOrEmpty(loginResponse.Token)) return false;
             return await ProcesarSesionExitosa(loginResponse);
         }
-        catch
-        {
-            return false;
-        }
+        catch { return false; }
     }
 
     private async Task<bool> ProcesarSesionExitosa(LoginResponse loginResponse)
     {
-        // Establecer token en el HttpClient
         _apiService.SetAuthToken(loginResponse.Token);
-
-        // Obtener el perfil local desde Acceso Control
         var perfil = await _apiService.ObtenerMiPerfilAsync();
-        if (perfil is null)
-            return false;
-
-        // Guardar sesión (el ID ahora es perfil.PerfilId)
+        if (perfil is null) return false;
         GuardarSesion(loginResponse.Token, perfil.NombreCompleto, perfil.PerfilId);
         return true;
     }

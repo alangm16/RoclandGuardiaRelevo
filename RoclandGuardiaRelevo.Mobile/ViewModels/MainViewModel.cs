@@ -78,10 +78,10 @@ public partial class MainViewModel : BaseViewModel
             RelevoTitulo = $"Relevo del {relevo.Fecha:dd/MM/yyyy}";
             EstadoBadge = relevo.Estado switch
             {
-                "Pendiente" => "⏳ Pendiente",
-                "EnCurso" => "🟢 En curso",
-                "Completado" => "✅ Completado",
-                "Incompleto" => "⚠️ Incompleto",
+                "Pendiente" => "Pendiente",
+                "EnCurso" => "En curso",
+                "Completado" => "Completado",
+                "Incompleto" => "Incompleto",
                 _ => relevo.Estado
             };
 
@@ -124,7 +124,7 @@ public partial class MainViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            await Shell.Current.DisplayAlert("Error", "No se pudo cargar el relevo.", "OK");
+            await Shell.Current.DisplayAlertAsync("Error", "No se pudo cargar el relevo.", "OK");
         }
         finally
         {
@@ -158,16 +158,16 @@ public partial class MainViewModel : BaseViewModel
                 if (iniciarResult != null && iniciarResult.Exito)
                     await CargarRelevoAsync();
                 else
-                    await Shell.Current.DisplayAlert("Error", iniciarResult?.Mensaje ?? "No se pudo iniciar el rondín.", "OK");
+                    await Shell.Current.DisplayAlertAsync("Error", iniciarResult?.Mensaje ?? "No se pudo iniciar el rondín.", "OK");
                 break;
             case "EnCurso":
                 await Shell.Current.GoToAsync($"RondinPage?participanteId={miActivo.ParticipanteId}&rol={miActivo.Rol}&relevoId={miActivo.Relevo.RelevoId}");
                 break;
             case "Completado":
-                await Shell.Current.DisplayAlert("Rondín completado", $"Finalizaste tu turno el {miParticipante.FechaFin?.ToString("HH:mm")}", "OK");
+                await Shell.Current.DisplayAlertAsync("Rondín completado", $"Finalizaste tu turno el {miParticipante.FechaFin?.ToString("HH:mm")}", "OK");
                 break;
             default:
-                await Shell.Current.DisplayAlert("Información", $"Estado actual: {miParticipante.Estado}", "OK");
+                await Shell.Current.DisplayAlertAsync("Información", $"Estado actual: {miParticipante.Estado}", "OK");
                 break;
         }
     }
@@ -190,17 +190,17 @@ public partial class MainViewModel : BaseViewModel
 
     private string FormatearEstado(string estado) => estado switch
     {
-        "Pendiente" => "⏳ Pendiente",
-        "EnCurso" => "🟢 En curso",
-        "Completado" => "✅ Completado",
-        "Expirado" => "⌛ Expirado",
+        "Pendiente" => "Pendiente",
+        "EnCurso" => "En curso",
+        "Completado" => "Completado",
+        "Expirado" => "Expirado",
         _ => estado
     };
 
     [RelayCommand]
     private async Task CerrarSesionAsync()
     {
-        bool respuesta = await Shell.Current.DisplayAlert("Cerrar sesión", "¿Estás seguro que deseas salir de tu cuenta?", "Sí, salir", "Cancelar");
+        bool respuesta = await Shell.Current.DisplayAlertAsync("Cerrar sesión", "¿Estás seguro que deseas salir de tu cuenta?", "Sí, salir", "Cancelar");
         if (respuesta)
         {
             _auth.CerrarSesion();

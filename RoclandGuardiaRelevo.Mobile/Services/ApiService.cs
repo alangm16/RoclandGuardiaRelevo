@@ -77,7 +77,7 @@ public class ApiService
             {
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
-                    await Shell.Current.DisplayAlert("Error Backend", $"Status: {response.StatusCode}\n{rawJson}", "OK");
+                    await Shell.Current.DisplayAlertAsync("Error Backend", $"Status: {response.StatusCode}\n{rawJson}", "OK");
                 });
                 return null;
             }
@@ -88,7 +88,7 @@ public class ApiService
         {
             MainThread.BeginInvokeOnMainThread(async () =>
             {
-                await Shell.Current.DisplayAlert("Error al convertir JSON", ex.Message, "OK");
+                await Shell.Current.DisplayAlertAsync("Error al convertir JSON", ex.Message, "OK");
             });
             return null;
         }

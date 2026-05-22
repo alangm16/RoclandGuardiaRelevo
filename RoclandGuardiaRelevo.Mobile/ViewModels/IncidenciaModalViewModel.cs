@@ -14,9 +14,10 @@ public partial class IncidenciaModalViewModel : ObservableObject
     [ObservableProperty] private string? fotoBase64;
     [ObservableProperty] private string? mimeType;
     [ObservableProperty] private bool tieneFoto;
+    [ObservableProperty] private bool tieneNoFoto = true;   
+    [ObservableProperty] private ImageSource? fotoPreview;  
     [ObservableProperty] private bool estaCargando;
 
-    // Propiedades para resultado
     public bool Aceptado { get; private set; }
 
     public IncidenciaModalViewModel(ApiService api, int puntoId, string puntoNombre)
@@ -38,13 +39,16 @@ public partial class IncidenciaModalViewModel : ObservableObject
             using var memoryStream = new MemoryStream();
             await stream.CopyToAsync(memoryStream);
             var bytes = memoryStream.ToArray();
+
             FotoBase64 = Convert.ToBase64String(bytes);
             MimeType = photo.ContentType;
             TieneFoto = true;
+            TieneNoFoto = false;                                       
+            FotoPreview = ImageSource.FromStream(() => new MemoryStream(bytes));
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            await Shell.Current.DisplayAlert("Error", "No se pudo tomar la foto", "OK");
+            await Shell.Current.DisplayAlertAsync("Error", "No se pudo tomar la foto", "OK");
         }
     }
 
@@ -60,7 +64,8 @@ public partial class IncidenciaModalViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(Comentario))
         {
-            await Shell.Current.DisplayAlert("Campo requerido", "Debes escribir un comentario para reportar la anomalía.", "OK");
+            await Shell.Current.DisplayAlertAsync("Campo requerido",
+                "Debes escribir un comentario para reportar la anomalía.", "OK");
             return;
         }
 

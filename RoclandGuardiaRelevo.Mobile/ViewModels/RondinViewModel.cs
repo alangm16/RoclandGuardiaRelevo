@@ -81,7 +81,7 @@ public partial class RondinViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
+            await Shell.Current.DisplayAlertAsync("Error", ex.Message, "OK");
         }
         finally
         {
@@ -139,7 +139,7 @@ public partial class RondinViewModel : BaseViewModel
     {
         if (!PuedeEnviar)
         {
-            await Shell.Current.DisplayAlert("Incompleto", "Responde todos los puntos antes de finalizar.", "OK");
+            await Shell.Current.DisplayAlertAsync("Incompleto", "Responde todos los puntos antes de finalizar.", "OK");
             return;
         }
 
@@ -179,17 +179,17 @@ public partial class RondinViewModel : BaseViewModel
 
             if (resultado != null && resultado.Exito)
             {
-                await Shell.Current.DisplayAlert("Éxito", "Rondín finalizado correctamente.", "OK");
+                await Shell.Current.DisplayAlertAsync("Éxito", "Rondín finalizado correctamente.", "OK");
                 await Shell.Current.GoToAsync("//MainPage");
             }
             else
             {
-                await Shell.Current.DisplayAlert("Error", resultado?.Mensaje ?? "El servidor rechazó el cierre del rondín.", "OK");
+                await Shell.Current.DisplayAlertAsync("Error", resultado?.Mensaje ?? "El servidor rechazó el cierre del rondín.", "OK");
             }
         }
         catch (Exception ex)
         {
-            await Shell.Current.DisplayAlert("Error Crítico", $"Excepción: {ex.Message}", "OK");
+            await Shell.Current.DisplayAlertAsync("Error Crítico", $"Excepción: {ex.Message}", "OK");
         }
     }
 
@@ -206,10 +206,23 @@ public partial class RondinViewModel : BaseViewModel
         if (punto.Respuesta == false) return;
 
         var popup = new IncidenciaPopup(punto.Id, punto.Nombre, _api);
+
+        // 1. Crear un TaskCompletionSource para rastrear cuando se cierra la vista
+        var tcs = new TaskCompletionSource<bool>();
+        popup.Disappearing += (s, e) => tcs.TrySetResult(true);
+
+        // 2. Abrir el modal
         await Shell.Current.Navigation.PushModalAsync(popup);
+
+        // 3. ESPERAR a que el usuario cierre el modal antes de continuar
+        await tcs.Task;
+
+        // 4. Ahora sí, evaluamos qué hizo el usuario en el modal
         var vmPopup = popup.BindingContext as IncidenciaModalViewModel;
+
         if (vmPopup != null && vmPopup.Aceptado)
         {
+            // Guardamos la respuesta y la incidencia
             await GuardarRespuestaAsync(punto.Id, false, vmPopup.Comentario);
             await CrearIncidenciaAsync(punto.Id, vmPopup.Comentario, vmPopup.FotoBase64, vmPopup.MimeType);
         }
