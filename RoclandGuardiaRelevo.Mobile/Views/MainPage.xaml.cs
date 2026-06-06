@@ -14,6 +14,6 @@ public partial class MainPage : ContentPage
     {
         base.OnAppearing();
         if (BindingContext is MainViewModel mainVm)
-            await mainVm.CargarRelevoAsync();
+            await mainVm.CargarDatosAsync();
     }
 }

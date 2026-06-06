@@ -30,10 +30,13 @@ namespace RoclandGuardiaRelevo.Mobile
             builder.Services.AddTransient<LoginViewModel>();
             builder.Services.AddTransient<MainViewModel>();
             builder.Services.AddTransient<RondinViewModel>();
-
+            builder.Services.AddTransient<DetalleRondinViewModel>();
+            //builder.Services.AddTransient<IncidenciasViewModel>();
             builder.Services.AddTransient<LoginPage>();
             builder.Services.AddTransient<MainPage>();
             builder.Services.AddTransient<RondinPage>();
+            builder.Services.AddTransient<DetalleRondinPage>();
+            //builder.Services.AddTransient<IncidenciasPage>();
 
 #if DEBUG
             builder.Logging.AddDebug();

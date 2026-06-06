@@ -11,19 +11,18 @@ public partial class RondinViewModel : BaseViewModel
 {
     private readonly ApiService _api;
     private readonly AuthStateService _auth;
-    private int participanteId;
-    private string miRol = string.Empty;
-    private int relevoId;
-    private List<PuntoChecklistVm> todosLosPuntos = new();
+    private string tipoRondin = string.Empty;
+    private List<PuntoConRespuesta> todosLosPuntos = new();
 
     [ObservableProperty] private string subtitulo = string.Empty;
     [ObservableProperty] private string instruccionTexto = string.Empty;
-    [ObservableProperty] private string progresoTexto = "0%";
+    [ObservableProperty] private string progresoTexto = "0/0";
     [ObservableProperty] private double progresoValor = 0;
-    [ObservableProperty] private string novedades = string.Empty;
+    [ObservableProperty] private string observacionGeneral = string.Empty;
     [ObservableProperty] private bool puedeEnviar;
     [ObservableProperty] private Color colorBoton = Colors.Gray;
     [ObservableProperty] private ObservableCollection<CategoriaChecklistVm> categorias = new();
+    [ObservableProperty] private ObservableCollection<FotoPreviewItem> fotosPreview = new();
 
     public RondinViewModel(ApiService api, AuthStateService auth)
     {
@@ -31,48 +30,63 @@ public partial class RondinViewModel : BaseViewModel
         _auth = auth;
     }
 
-    public async Task CargarChecklistAsync(int participanteId, string rol, int relevoId)
+    public async Task InicializarAsync(string tipo)
     {
-        this.participanteId = participanteId;
-        miRol = rol;
-        this.relevoId = relevoId;
+        tipoRondin = tipo;
 
-        Subtitulo = rol == "Saliente" ? "Entrega de turno" : "Recepción de turno";
-        InstruccionTexto = rol == "Saliente"
-            ? "Verifica cada punto y marca SÍ o NO. Si marcas NO, se te pedirá un comentario y foto (opcional)."
-            : "Revisa cada punto con el guardia saliente. Marca NO si hay anomalía.";
+        // Verificar bandera local antes de cargar (solo en producción)
+        if (!AppConstants.ModoPruebas && RondinFlagsService.EstaEnviado(tipo))
+        {
+            await Shell.Current.DisplayAlertAsync(
+                "Ya completado",
+                $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya fue enviado hoy.",
+                "OK");
+            await Shell.Current.GoToAsync("//MainPage");
+            return;
+        }
 
+        Subtitulo = tipo switch
+        {
+            "AMS" or "AVS" => "Entrega de turno (Saliente)",
+            "BME" or "BVE" => "Recepción de turno (Entrante)",
+            _ => "Rondín"
+        };
+        InstruccionTexto = "Marca SÍ (correcto) o NO (problema) en cada punto. Al finalizar puedes agregar observaciones y fotos.";
+
+        await CargarPuntosAsync();
+    }
+
+    private async Task CargarPuntosAsync()
+    {
         EstaCargando = true;
         try
         {
-            var puntosBackend = await _api.GetChecklistPuntosAsync();
-            if (puntosBackend == null) throw new Exception("No se pudo cargar el checklist");
-
-            var respuestasGuardadas = await _api.GetRespuestasPorParticipanteAsync(participanteId);
-            var dictRespuestas = respuestasGuardadas?.ToDictionary(r => r.PuntoId) ?? new();
-
-            todosLosPuntos.Clear();
-            var nuevasCategorias = new ObservableCollection<CategoriaChecklistVm>();
-            foreach (var cat in puntosBackend)
+            var puntos = await _api.GetPuntosActivosAsync();
+            if (puntos == null || !puntos.Any())
             {
-                var catVm = new CategoriaChecklistVm { Nombre = cat.Categoria };
-                foreach (var punto in cat.Puntos)
+                await Shell.Current.DisplayAlertAsync("Error", "No hay puntos de checklist configurados.", "OK");
+                return;
+            }
+
+            var grupos = puntos.OrderBy(p => p.Orden).GroupBy(p => p.Categoria);
+            var nuevasCategorias = new ObservableCollection<CategoriaChecklistVm>();
+            todosLosPuntos.Clear();
+
+            foreach (var grupo in grupos)
+            {
+                var catVm = new CategoriaChecklistVm { Nombre = grupo.Key };
+                foreach (var p in grupo)
                 {
-                    var vm = new PuntoChecklistVm
+                    var puntoVm = new PuntoConRespuesta
                     {
-                        Id = punto.Id,
-                        Nombre = punto.Nombre,
-                        Descripcion = punto.Descripcion,
-                        Orden = punto.Orden
+                        Id = p.Id,
+                        Nombre = p.Nombre,
+                        Descripcion = p.Descripcion,
+                        Orden = p.Orden
                     };
-                    if (dictRespuestas.TryGetValue(punto.Id, out var existente))
-                    {
-                        vm.Respuesta = existente.Respuesta;
-                        vm.Comentario = existente.Comentario;
-                        vm.ActualizarApariencia(existente.Respuesta);
-                    }
-                    catVm.Puntos.Add(vm);
-                    todosLosPuntos.Add(vm);
+                    puntoVm.PropertyChanged += (s, e) => ActualizarProgreso();
+                    catVm.Puntos.Add(puntoVm);
+                    todosLosPuntos.Add(puntoVm);
                 }
                 nuevasCategorias.Add(catVm);
             }
@@ -81,7 +95,7 @@ public partial class RondinViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            await Shell.Current.DisplayAlertAsync("Error", ex.Message, "OK");
+            await Shell.Current.DisplayAlertAsync("Error", $"No se pudo cargar el checklist: {ex.Message}", "OK");
         }
         finally
         {
@@ -95,44 +109,33 @@ public partial class RondinViewModel : BaseViewModel
         int total = todosLosPuntos.Count;
         ProgresoTexto = $"{respondidos}/{total}";
         ProgresoValor = total > 0 ? (double)respondidos / total : 0;
-        PuedeEnviar = respondidos == total;
-        ColorBoton = PuedeEnviar ? Color.FromArgb("#4CAF50") : Colors.Gray;
+        PuedeEnviar = respondidos == total && total > 0;
+        ColorBoton = PuedeEnviar ? Color.FromArgb("#2E7D32") : Color.FromArgb("#9E9E9E");
     }
 
-    public async Task<bool> GuardarRespuestaAsync(int puntoId, bool respuesta, string? comentario)
-    {
-        var request = new GuardarRespuestaRequest
-        {
-            PuntoId = puntoId,
-            Respuesta = respuesta,
-            Comentario = comentario
-        };
-        var resultado = await _api.GuardarRespuestaAsync(participanteId, request);
-        bool exito = resultado != null && resultado.Exito;   // ✅ usa la propiedad Exito
-        if (exito)
-        {
-            var punto = todosLosPuntos.First(p => p.Id == puntoId);
-            punto.Respuesta = respuesta;
-            punto.Comentario = comentario;
-            punto.ActualizarApariencia(respuesta);
-            ActualizarProgreso();
-        }
-        return exito;
-    }
+    [RelayCommand]
+    private void ResponderSi(PuntoConRespuesta punto)
+        => punto.Respuesta = true;
 
-    public async Task CrearIncidenciaAsync(int puntoId, string comentario, string? fotoBase64, string? mimeType)
+    [RelayCommand]
+    private void ResponderNo(PuntoConRespuesta punto)
+        => punto.Respuesta = false;
+
+    // Llamado desde el code-behind tras capturar foto
+    public async Task AgregarFotoAsync(byte[] fotoBytes, string mimeType)
     {
-        var request = new CrearIncidenciaRequest
+        var imageSource = ImageSource.FromStream(() => new MemoryStream(fotoBytes));
+        FotosPreview.Add(new FotoPreviewItem
         {
-            RelevoId = relevoId,
-            PuntoId = puntoId,
-            TipoOrigen = "NoOk",
-            Descripcion = comentario,
-            FotoBase64 = fotoBase64,
+            Thumbnail = imageSource,
+            Bytes = fotoBytes,
             MimeType = mimeType
-        };
-        await _api.CrearIncidenciaAsync(request);
+        });
     }
+
+    [RelayCommand]
+    private void EliminarFoto(FotoPreviewItem foto)
+        => FotosPreview.Remove(foto);
 
     [RelayCommand]
     private async Task EnviarRondinAsync()
@@ -143,143 +146,123 @@ public partial class RondinViewModel : BaseViewModel
             return;
         }
 
+        // Guardia de bandera local (doble verificación al momento de enviar)
+        if (!AppConstants.ModoPruebas && RondinFlagsService.EstaEnviado(tipoRondin))
+        {
+            await Shell.Current.DisplayAlertAsync("Ya enviado",
+                $"El rondín {tipoRondin} ya fue registrado hoy.",
+                "OK");
+            await Shell.Current.GoToAsync("//MainPage");
+            return;
+        }
+
+        // Pedir firma
         var firmaVm = new FirmaViewModel();
         var firmaPage = new FirmaPage(firmaVm);
-
-        // Esperar a que la pantalla de firma se cierre
-        var tcs = new TaskCompletionSource<bool>();
-        firmaPage.Disappearing += (s, e) => tcs.TrySetResult(true);
-
+        var tcsFirma = new TaskCompletionSource<bool>();
+        firmaPage.Disappearing += (s, e) => tcsFirma.TrySetResult(true);
         await Shell.Current.Navigation.PushModalAsync(firmaPage);
-        await tcs.Task;
+        await tcsFirma.Task;
 
-        if (!firmaVm.FirmaCompletada)
+        if (!firmaVm.FirmaCompletada || firmaVm.FirmaBytes == null)
             return;
 
+        var puntosDto = todosLosPuntos.Select(p => new ChecklistPuntoItemDto
+        {
+            IdPunto = p.Id,
+            Estado = p.Respuesta!.Value
+        }).ToList();
+
+        var guardarDto = new GuardarChecklistDto
+        {
+            TipoRondin = tipoRondin,
+            Observacion = ObservacionGeneral,
+            Firma = firmaVm.FirmaBytes,
+            Puntos = puntosDto
+        };
+
+        EstaCargando = true;
         try
         {
-            // Preparar las respuestas del checklist
-            var respuestas = todosLosPuntos.Select(p => new GuardarRespuestaRequest
-            {
-                PuntoId = p.Id,
-                Respuesta = p.Respuesta!.Value,
-                Comentario = p.Comentario
-            }).ToList();
+            var resultado = await _api.GuardarChecklistAsync(guardarDto);
+            if (resultado == null || resultado.IdChecklist == 0)
+                throw new Exception("El servidor no devolvió un Id válido.");
 
-            // Crear la solicitud de cierre usando CompletarRondinRequest
-            var completarRequest = new CompletarRondinRequest
-            {
-                FirmaBase64 = Convert.ToBase64String(firmaVm.FirmaBytes!),
-                Observaciones = Novedades,
-                Respuestas = respuestas
-            };
+            int idChecklist = resultado.IdChecklist;
 
-            // Llamar al servicio
-            var resultado = await _api.CompletarRondinAsync(participanteId, completarRequest);
-
-            if (resultado != null && resultado.Exito)
+            foreach (var foto in FotosPreview)
             {
-                await Shell.Current.DisplayAlertAsync("Éxito", "Rondín finalizado correctamente.", "OK");
-                await Shell.Current.GoToAsync("//MainPage");
+                await _api.AgregarFotoAsync(new AgregarFotoDto
+                {
+                    IdChecklist = idChecklist,
+                    Foto = foto.Bytes,
+                    MimeType = foto.MimeType
+                });
             }
-            else
-            {
-                await Shell.Current.DisplayAlertAsync("Error", resultado?.Mensaje ?? "El servidor rechazó el cierre del rondín.", "OK");
-            }
+
+            // Marcar bandera local: este tipo ya no se puede volver a enviar hoy
+            RondinFlagsService.MarcarEnviado(tipoRondin);
+
+            string msg = $"Rondín guardado correctamente.\nIncidencias generadas: {resultado.IncidenciasGeneradas}";
+            await Shell.Current.DisplayAlertAsync("Éxito", msg, "OK");
+            await Shell.Current.GoToAsync("//MainPage");
         }
         catch (Exception ex)
         {
-            await Shell.Current.DisplayAlertAsync("Error Crítico", $"Excepción: {ex.Message}", "OK");
+            await Shell.Current.DisplayAlertAsync("Error", $"No se pudo guardar: {ex.Message}", "OK");
         }
-    }
-
-    [RelayCommand]
-    private async Task ResponderSiAsync(PuntoChecklistVm punto)
-    {
-        if (punto.Respuesta == true) return;
-        await GuardarRespuestaAsync(punto.Id, true, null);
-    }
-
-    [RelayCommand]
-    private async Task ResponderNoAsync(PuntoChecklistVm punto)
-    {
-        if (punto.Respuesta == false) return;
-
-        var popup = new IncidenciaPopup(punto.Id, punto.Nombre, _api);
-
-        // 1. Crear un TaskCompletionSource para rastrear cuando se cierra la vista
-        var tcs = new TaskCompletionSource<bool>();
-        popup.Disappearing += (s, e) => tcs.TrySetResult(true);
-
-        // 2. Abrir el modal
-        await Shell.Current.Navigation.PushModalAsync(popup);
-
-        // 3. ESPERAR a que el usuario cierre el modal antes de continuar
-        await tcs.Task;
-
-        // 4. Ahora sí, evaluamos qué hizo el usuario en el modal
-        var vmPopup = popup.BindingContext as IncidenciaModalViewModel;
-
-        if (vmPopup != null && vmPopup.Aceptado)
+        finally
         {
-            // Guardamos la respuesta y la incidencia
-            await GuardarRespuestaAsync(punto.Id, false, vmPopup.Comentario);
-            await CrearIncidenciaAsync(punto.Id, vmPopup.Comentario, vmPopup.FotoBase64, vmPopup.MimeType);
+            EstaCargando = false;
         }
     }
 
     [RelayCommand]
     private async Task VolverAsync()
-    {
-        await Shell.Current.GoToAsync("//MainPage");
-    }
+        => await Shell.Current.GoToAsync("//MainPage");
 }
 
-// Clases auxiliares movidas fuera de RondinViewModel, en el mismo namespace
+// ── Clases auxiliares ──────────────────────────────────────────────────
+
 public partial class CategoriaChecklistVm : ObservableObject
 {
     public string Nombre { get; set; } = string.Empty;
-    public ObservableCollection<PuntoChecklistVm> Puntos { get; set; } = new();
+    public ObservableCollection<PuntoConRespuesta> Puntos { get; set; } = new();
 }
 
-public partial class PuntoChecklistVm : ObservableObject
+public partial class PuntoConRespuesta : ObservableObject
 {
     public int Id { get; set; }
     public string Nombre { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
     public int Orden { get; set; }
 
-    [ObservableProperty] private bool? respuesta;
-    [ObservableProperty] private string? comentario;
-    [ObservableProperty] private string? fotoBase64;
-    [ObservableProperty] private string? mimeType;
-    [ObservableProperty] private string textoFoto = "📷 Tomar foto";
-    [ObservableProperty] private bool panelNoVisible = false;
-
-    public Color SiBackground => Respuesta == true ? Color.FromArgb("#4CAF50") : Color.FromArgb("#F4F8F4");
-    public Color SiBorder => Respuesta == true ? Color.FromArgb("#4CAF50") : Color.FromArgb("#C8DFC8");
-    public Color SiTextColor => Respuesta == true ? Colors.White : Color.FromArgb("#1B3A1B");
-    public Color NoBackground => Respuesta == false ? Color.FromArgb("#F44336") : Color.FromArgb("#F4F8F4");
-    public Color NoBorder => Respuesta == false ? Color.FromArgb("#F44336") : Color.FromArgb("#C8DFC8");
-    public Color NoTextColor => Respuesta == false ? Colors.White : Color.FromArgb("#1B3A1B");
-    public string BorderColor => Respuesta switch
-    {
-        true => "#4CAF50",
-        false => "#F44336",
-        _ => "#E0EFE0"
-    };
     public bool TieneDescripcion => !string.IsNullOrWhiteSpace(Descripcion);
 
-    public void ActualizarApariencia(bool? nuevaRespuesta)
+    [ObservableProperty]
+    private bool? respuesta;
+
+    // Notifica los colores y textos cada vez que cambia la respuesta
+    partial void OnRespuestaChanged(bool? value)
     {
-        Respuesta = nuevaRespuesta;
         OnPropertyChanged(nameof(SiBackground));
-        OnPropertyChanged(nameof(SiBorder));
-        OnPropertyChanged(nameof(SiTextColor));
         OnPropertyChanged(nameof(NoBackground));
-        OnPropertyChanged(nameof(NoBorder));
+        OnPropertyChanged(nameof(SiTextColor));
         OnPropertyChanged(nameof(NoTextColor));
-        OnPropertyChanged(nameof(BorderColor));
-        PanelNoVisible = nuevaRespuesta == false;
     }
+
+    // Color neutro inicial: #D8E8D8 (gris-verde suave igual para ambos)
+    // Seleccionado SÍ → verde #2E7D32  |  Seleccionado NO → rojo #C62828
+    public Color SiBackground => Respuesta == true ? Color.FromArgb("#2E7D32") : Color.FromArgb("#D8E8D8");
+    public Color NoBackground => Respuesta == false ? Color.FromArgb("#C62828") : Color.FromArgb("#D8E8D8");
+
+    public Color SiTextColor => Respuesta == true ? Colors.White : Color.FromArgb("#3A5A3A");
+    public Color NoTextColor => Respuesta == false ? Colors.White : Color.FromArgb("#5A3A3A");
+}
+
+public class FotoPreviewItem
+{
+    public ImageSource Thumbnail { get; set; } = null!;
+    public byte[] Bytes { get; set; } = null!;
+    public string MimeType { get; set; } = string.Empty;
 }

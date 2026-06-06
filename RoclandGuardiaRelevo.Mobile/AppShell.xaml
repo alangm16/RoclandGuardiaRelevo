@@ -1,24 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<Shell
-    x:Class="RoclandGuardiaRelevo.Mobile.AppShell"
-    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
-    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    xmlns:views="clr-namespace:RoclandGuardiaRelevo.Mobile.Views"
-    Shell.FlyoutBehavior="Disabled"
-       BackgroundColor="#FFFFFF"
-       TitleColor="#1A1A1A">
+<Shell x:Class="RoclandGuardiaRelevo.Mobile.AppShell"
+       xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:views="clr-namespace:RoclandGuardiaRelevo.Mobile.Views"
+       Shell.FlyoutBehavior="Disabled">
 
-    <!-- Login (fuera del main, sin NavBar) -->
-    <ShellContent Route="LoginPage"
-                  ContentTemplate="{DataTemplate views:LoginPage}"
-                  Shell.NavBarIsVisible="False"/>
+    <ShellContent Route="LoginPage" ContentTemplate="{DataTemplate views:LoginPage}" Shell.NavBarIsVisible="False" />
 
-                  <ShellContent Route="MainPage"
-                  ContentTemplate="{DataTemplate views:MainPage}"
-                  Shell.NavBarIsVisible="False"/>
+    <FlyoutItem FlyoutDisplayOptions="AsMultipleItems">
+        <ShellContent Title="Principal" ContentTemplate="{DataTemplate views:MainPage}" Route="MainPage" />
+        <!-- Incidencias deshabilitada por ahora -->
+        <!-- <ShellContent Title="Incidencias" ContentTemplate="{DataTemplate views:IncidenciasPage}" Route="IncidenciasPage" /> -->
+    </FlyoutItem>
 
-    <ShellContent Route="RondinPage" ContentTemplate="{DataTemplate views:RondinPage}" Shell.NavBarIsVisible="False"/>
-
-    <ShellContent Route="FirmaPage" ContentTemplate="{DataTemplate views:FirmaPage}" Shell.NavBarIsVisible="False"/>
-
+    <!-- Rutas modales o sin Flyout -->
+    <ShellContent Route="RondinPage" ContentTemplate="{DataTemplate views:RondinPage}" Shell.NavBarIsVisible="False" />
+    <ShellContent Route="DetalleRondinPage" ContentTemplate="{DataTemplate views:DetalleRondinPage}" Shell.NavBarIsVisible="False" />
 </Shell>

@@ -1,7 +1,7 @@
-﻿using RoclandGuardiaRelevo.Mobile.Models;
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using RoclandGuardiaRelevo.Mobile.Models;
 
 namespace RoclandGuardiaRelevo.Mobile.Services;
 
@@ -23,7 +23,6 @@ public class ApiService
     public ApiService(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider;
-
         var handler = new SocketsHttpHandler
         {
             PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
@@ -34,21 +33,14 @@ public class ApiService
                 RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true
             }
         };
-
-        _http = new HttpClient(handler)
-        {
-            BaseAddress = new Uri(BaseUrl),
-            Timeout = TimeSpan.FromSeconds(15)
-        };
+        _http = new HttpClient(handler) { BaseAddress = new Uri(BaseUrl), Timeout = TimeSpan.FromSeconds(15) };
     }
 
     private void SetAuthHeader()
     {
         var authService = _serviceProvider.GetService<AuthStateService>();
         if (authService != null && !string.IsNullOrEmpty(authService.Token))
-        {
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authService.Token);
-        }
     }
 
     public void SetAuthToken(string token)
@@ -57,7 +49,6 @@ public class ApiService
     }
 
     // ======================== AUTENTICACIÓN ========================
-
     public async Task<LoginResponse?> LoginDirectoAsync(string username, string password)
     {
         try
@@ -69,29 +60,11 @@ public class ApiService
                 CodigoProyecto = AppConstants.CodigoProyectoGuardiaRelevo,
                 Plataforma = AppConstants.PlataformaMobile
             };
-
             var response = await _http.PostAsJsonAsync("api/superadmin/Auth/login-directo", payload);
-            var rawJson = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-            {
-                MainThread.BeginInvokeOnMainThread(async () =>
-                {
-                    await Shell.Current.DisplayAlertAsync("Error Backend", $"Status: {response.StatusCode}\n{rawJson}", "OK");
-                });
-                return null;
-            }
-
-            return JsonSerializer.Deserialize<LoginResponse>(rawJson, JsonOpts);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<LoginResponse>(JsonOpts);
         }
-        catch (Exception ex)
-        {
-            MainThread.BeginInvokeOnMainThread(async () =>
-            {
-                await Shell.Current.DisplayAlertAsync("Error al convertir JSON", ex.Message, "OK");
-            });
-            return null;
-        }
+        catch { return null; }
     }
 
     public async Task<LoginResponse?> LoginQrAsync(string qrCode)
@@ -104,16 +77,11 @@ public class ApiService
                 CodigoProyecto = AppConstants.CodigoProyectoGuardiaRelevo,
                 Plataforma = AppConstants.PlataformaMobile
             };
-
             var response = await _http.PostAsJsonAsync("api/superadmin/Auth/login-qr", payload);
             if (!response.IsSuccessStatusCode) return null;
             return await response.Content.ReadFromJsonAsync<LoginResponse>(JsonOpts);
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"LoginQrAsync error: {ex.Message}");
-            return null;
-        }
+        catch { return null; }
     }
 
     public async Task<MiPerfilResponse?> ObtenerMiPerfilAsync()
@@ -125,248 +93,124 @@ public class ApiService
             if (!response.IsSuccessStatusCode) return null;
             return await response.Content.ReadFromJsonAsync<MiPerfilResponse>(JsonOpts);
         }
-        catch
-        {
-            return null;
-        }
+        catch { return null; }
     }
 
-    // ======================== RELEVO Y RONDÍN ========================
-
-    /// <summary>
-    /// Obtiene o crea el relevo activo del guardia autenticado, junto con el participante asociado.
-    /// </summary>
-    public async Task<MiActivoResponse?> GetMiRelevoActivoAsync()
+    public async Task<LoginResponse?> RefrescarTokenAsync(string refreshToken)
     {
-        SetAuthHeader();
         try
         {
-            var response = await _http.GetAsync($"{ApiBasePath}/Relevo/mi-activo");
+            var payload = new { RefreshToken = refreshToken };
+            var response = await _http.PostAsJsonAsync("api/superadmin/Auth/refresh", payload);
             if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<MiActivoResponse>(JsonOpts);
+            return await response.Content.ReadFromJsonAsync<LoginResponse>(JsonOpts);
         }
-        catch
-        {
-            return null;
-        }
+        catch { return null; }
     }
 
-    /// <summary>
-    /// Obtiene el detalle completo de un relevo.
-    /// </summary>
-    public async Task<RelevoDetalleResponse?> GetRelevoDetalleAsync(int relevoId)
+    // ======================== PUNTOS ACTIVOS ========================
+    public async Task<List<PuntoDto>?> GetPuntosActivosAsync()
     {
         SetAuthHeader();
         try
         {
-            var response = await _http.GetAsync($"{ApiBasePath}/Relevo/{relevoId}");
+            var response = await _http.GetAsync($"{ApiBasePath}/puntos/activos");
             if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<RelevoDetalleResponse>(JsonOpts);
+            return await response.Content.ReadFromJsonAsync<List<PuntoDto>>(JsonOpts);
         }
-        catch
-        {
-            return null;
-        }
+        catch { return null; }
     }
 
-    /// <summary>
-    /// Obtiene el historial paginado de relevos.
-    /// </summary>
-    public async Task<PagedResult<RelevoListResponse>?> GetHistorialRelevosAsync(int page = 1, int pageSize = 10)
+    // ======================== CHECKLIST (RONDINES) ========================
+    public async Task<GuardarChecklistResponseDto?> GuardarChecklistAsync(GuardarChecklistDto dto)
     {
         SetAuthHeader();
         try
         {
-            var url = $"{ApiBasePath}/Relevo/paged?page={page}&pageSize={pageSize}";
+            var response = await _http.PostAsJsonAsync($"{ApiBasePath}/checklist", dto);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<GuardarChecklistResponseDto>(JsonOpts);
+        }
+        catch { return null; }
+    }
+
+    public async Task<List<ChecklistResumenDto>?> GetHistorialAsync(int? idGuardia = null, DateTime? desde = null, DateTime? hasta = null)
+    {
+        SetAuthHeader();
+        var query = System.Web.HttpUtility.ParseQueryString(string.Empty);
+        if (idGuardia.HasValue) query["idGuardia"] = idGuardia.Value.ToString();
+        if (desde.HasValue) query["desde"] = desde.Value.ToString("o");
+        if (hasta.HasValue) query["hasta"] = hasta.Value.ToString("o");
+        var url = $"{ApiBasePath}/checklist/historial?{query}";
+        try
+        {
             var response = await _http.GetAsync(url);
             if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<PagedResult<RelevoListResponse>>(JsonOpts);
+            return await response.Content.ReadFromJsonAsync<List<ChecklistResumenDto>>(JsonOpts);
         }
-        catch
-        {
-            return null;
-        }
+        catch { return null; }
     }
 
-    // ======================== RONDÍN (iniciar, guardar, completar) ========================
-
-    /// <summary>
-    /// Inicia el rondín automáticamente para el guardia autenticado.
-    /// </summary>
-    public async Task<IniciarRondinResponse?> IniciarRondinAsync()
+    public async Task<ChecklistDetalleDto?> GetDetalleChecklistAsync(int idChecklist)
     {
         SetAuthHeader();
         try
         {
-            var response = await _http.PostAsync($"{ApiBasePath}/Rondin/iniciar", null);
+            var response = await _http.GetAsync($"{ApiBasePath}/checklist/{idChecklist}");
             if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<IniciarRondinResponse>(JsonOpts);
+            return await response.Content.ReadFromJsonAsync<ChecklistDetalleDto>(JsonOpts);
         }
-        catch
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Guarda la respuesta de un punto del checklist.
-    /// </summary>
-    public async Task<GuardarRespuestaResponse?> GuardarRespuestaAsync(int participanteId, GuardarRespuestaRequest request)
-    {
-        SetAuthHeader();
-        try
-        {
-            var response = await _http.PostAsJsonAsync($"{ApiBasePath}/Rondin/{participanteId}/respuesta", request);
-            if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<GuardarRespuestaResponse>(JsonOpts);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// Completa el rondín, guarda firma y observaciones.
-    /// </summary>
-    public async Task<CompletarRondinResponse?> CompletarRondinAsync(int participanteId, CompletarRondinRequest request)
-    {
-        SetAuthHeader();
-        try
-        {
-            var response = await _http.PostAsJsonAsync($"{ApiBasePath}/Rondin/{participanteId}/completar", request);
-            if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<CompletarRondinResponse>(JsonOpts);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    // ======================== CHECKLIST ========================
-
-    public async Task<List<CategoriaChecklistDto>?> GetChecklistPuntosAsync()
-    {
-        SetAuthHeader();
-        try
-        {
-            var response = await _http.GetAsync($"{ApiBasePath}/Checklist/puntos");
-            if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<List<CategoriaChecklistDto>>(JsonOpts);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    public async Task<List<ChecklistRespuestaResponse>?> GetRespuestasPorParticipanteAsync(int participanteId)
-    {
-        SetAuthHeader();
-        try
-        {
-            var response = await _http.GetAsync($"{ApiBasePath}/Checklist/respuestas/{participanteId}");
-            if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<List<ChecklistRespuestaResponse>>(JsonOpts);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    public async Task<List<DiscrepanciaRespuestaResponse>?> GetDiscrepanciasAsync(int relevoId)
-    {
-        SetAuthHeader();
-        try
-        {
-            var response = await _http.GetAsync($"{ApiBasePath}/Checklist/discrepancias/{relevoId}");
-            if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<List<DiscrepanciaRespuestaResponse>>(JsonOpts);
-        }
-        catch
-        {
-            return null;
-        }
+        catch { return null; }
     }
 
     // ======================== INCIDENCIAS ========================
-
-    public async Task<IncidenciaResponse?> CrearIncidenciaAsync(CrearIncidenciaRequest request)
+    public async Task<List<IncidenciaDto>?> GetIncidenciasAsync(bool? resuelta = false)
     {
         SetAuthHeader();
+        var query = resuelta.HasValue ? $"?resuelta={resuelta.Value}" : "";
         try
         {
-            var response = await _http.PostAsJsonAsync($"{ApiBasePath}/Incidencia", request);
+            var response = await _http.GetAsync($"{ApiBasePath}/incidencias{query}");
             if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<IncidenciaResponse>(JsonOpts);
+            return await response.Content.ReadFromJsonAsync<List<IncidenciaDto>>(JsonOpts);
         }
-        catch
-        {
-            return null;
-        }
+        catch { return null; }
     }
 
-    public async Task<List<IncidenciaResponse>?> GetIncidenciasPorRelevoAsync(int relevoId)
+    public async Task<bool> ResolverIncidenciaAsync(int idIncidencia)
     {
         SetAuthHeader();
         try
         {
-            var response = await _http.GetAsync($"{ApiBasePath}/Incidencia/relevo/{relevoId}");
-            if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<List<IncidenciaResponse>>(JsonOpts);
+            var response = await _http.PostAsync($"{ApiBasePath}/incidencias/{idIncidencia}/resolver", null);
+            return response.IsSuccessStatusCode;
         }
-        catch
-        {
-            return null;
-        }
+        catch { return false; }
     }
 
-    public async Task<IncidenciaResponse?> GetIncidenciaDetalleAsync(int incidenciaId)
+    // ======================== FOTOS ========================
+    public async Task<int?> AgregarFotoAsync(AgregarFotoDto dto)
     {
         SetAuthHeader();
         try
         {
-            var response = await _http.GetAsync($"{ApiBasePath}/Incidencia/{incidenciaId}");
+            var response = await _http.PostAsJsonAsync($"{ApiBasePath}/fotos", dto);
             if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<IncidenciaResponse>(JsonOpts);
+            var result = await response.Content.ReadFromJsonAsync<dynamic>();
+            return result?.GetProperty("idFoto").GetInt32();
         }
-        catch
-        {
-            return null;
-        }
+        catch { return null; }
     }
 
-    public async Task<IncidenciaResponse?> ActualizarIncidenciaAsync(int incidenciaId, ActualizarIncidenciaRequest request)
+    public async Task<byte[]?> GetFotoAsync(int idFoto)
     {
         SetAuthHeader();
         try
         {
-            var response = await _http.PutAsJsonAsync($"{ApiBasePath}/Incidencia/{incidenciaId}", request);
+            var response = await _http.GetAsync($"{ApiBasePath}/fotos/{idFoto}");
             if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<IncidenciaResponse>(JsonOpts);
+            return await response.Content.ReadAsByteArrayAsync();
         }
-        catch
-        {
-            return null;
-        }
-    }
-
-    // ======================== CONFIGURACIÓN ========================
-
-    public async Task<List<ConfigTurnoResponse>?> GetConfigTurnosActivosAsync()
-    {
-        SetAuthHeader();
-        try
-        {
-            var response = await _http.GetAsync($"{ApiBasePath}/ConfigTurno/activos");
-            if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<List<ConfigTurnoResponse>>(JsonOpts);
-        }
-        catch
-        {
-            return null;
-        }
+        catch { return null; }
     }
 }

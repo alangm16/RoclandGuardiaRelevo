@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="RoclandGuardiaRelevo.Mobile.Views.DetalleRondinPage"
+             xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RoclandGuardiaRelevo.Mobile.ViewModels"
+             Shell.NavBarIsVisible="False"
+             BackgroundColor="#F0F4F0">
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" BackgroundColor="#1B3A1B" Padding="16,44,16,14">
+            <Label Text="Detalle del rondín" FontSize="17" FontAttributes="Bold" TextColor="White"
+                   HorizontalOptions="Center" VerticalOptions="Center"/>
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="16" Spacing="12">
+                <Frame BackgroundColor="White" CornerRadius="16" Padding="16" BorderColor="#D4E4D4">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="{Binding TipoRondin}" FontSize="14" FontAttributes="Bold" TextColor="#1B3A1B"/>
+                        <Label Text="{Binding DescripcionRondin}" FontSize="13" TextColor="#5A7A5A"/>
+                        <Label Text="{Binding Guardia}" FontSize="12" TextColor="#6A8A6A"/>
+                        <Label Text="{Binding FechaHoraLocal, StringFormat='Fecha: {0:dd/MM/yyyy HH:mm}'}"
+                               FontSize="11" TextColor="#9DBF9D"/>
+                        <BoxView HeightRequest="0.5" Color="#E0EFE0"/>
+                        <Label Text="Observación" FontSize="12" FontAttributes="Bold" TextColor="#5A7A5A"/>
+                        <Label Text="{Binding Observacion}"
+                               FontSize="12"
+                               TextColor="#1B3A1B"
+                               LineBreakMode="WordWrap"/>
+                        <Label Text="Firma" FontSize="12" FontAttributes="Bold" TextColor="#5A7A5A"/>
+                        <Label Text="{Binding TieneFirma, StringFormat='Firma: {0}'}" FontSize="12" TextColor="#1B3A1B"/>
+                    </VerticalStackLayout>
+                </Frame>
+
+                <Label Text="PUNTOS REVISADOS" FontSize="11" FontAttributes="Bold" TextColor="#5A7A5A" CharacterSpacing="1"/>
+                <CollectionView ItemsSource="{Binding Puntos}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Frame BackgroundColor="White" CornerRadius="10" Padding="12,8" Margin="0,0,0,8"
+                                   BorderColor="#E0EFE0">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                    <Image Grid.Column="0" Source="{Binding Estado, Converter={StaticResource BoolToImage}}"
+                                           WidthRequest="20" HeightRequest="20" VerticalOptions="Center"/>
+                                    <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                                        <Label Text="{Binding Nombre}" FontSize="13" FontAttributes="Bold" TextColor="#1B3A1B"/>
+                                        <Label Text="{Binding Descripcion}" FontSize="11" TextColor="#6A8A6A" IsVisible="{Binding Descripcion}"/>
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="2" Text="{Binding Estado, Converter={StaticResource BoolToText}}"
+                                           FontSize="11" FontAttributes="Bold" VerticalOptions="Center"/>
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

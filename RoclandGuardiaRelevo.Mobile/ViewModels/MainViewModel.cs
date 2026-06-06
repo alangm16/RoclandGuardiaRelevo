@@ -2,7 +2,6 @@
 using CommunityToolkit.Mvvm.Input;
 using RoclandGuardiaRelevo.Mobile.Models;
 using RoclandGuardiaRelevo.Mobile.Services;
-using System.Collections.ObjectModel;
 
 namespace RoclandGuardiaRelevo.Mobile.ViewModels;
 
@@ -11,120 +10,84 @@ public partial class MainViewModel : BaseViewModel
     private readonly ApiService _api;
     private readonly AuthStateService _auth;
 
+    // Datos generales
     [ObservableProperty] private string bienvenida = string.Empty;
     [ObservableProperty] private string iniciales = string.Empty;
     [ObservableProperty] private string fechaHoy = DateTime.Today.ToString("dddd d 'de' MMMM");
-    [ObservableProperty] private string nombreRol = string.Empty;
+    [ObservableProperty] private string turno = string.Empty;
 
-    [ObservableProperty] private bool sinRelevo = true;
-    [ObservableProperty] private bool hayRelevo = false;
+    // Estado del rondín disponible en este momento
+    [ObservableProperty] private string tipoRondinDisponible = string.Empty;
+    [ObservableProperty] private bool rondinDisponible;
+    [ObservableProperty] private bool yaRealizado;
+    [ObservableProperty] private string textoBotonAccion = "No hay rondín disponible";
 
-    [ObservableProperty] private string turnoNombre = string.Empty;
-    [ObservableProperty] private string relevoTitulo = string.Empty;
-    [ObservableProperty] private string estadoBadge = string.Empty;
-
-    [ObservableProperty] private string inicialSaliente = "?";
-    [ObservableProperty] private string nombreSaliente = "Sin asignar";
-    [ObservableProperty] private string estadoSaliente = string.Empty;
-
-    [ObservableProperty] private string inicialEntrante = "?";
-    [ObservableProperty] private string nombreEntrante = "Sin asignar";
-    [ObservableProperty] private string estadoEntrante = string.Empty;
-
-    [ObservableProperty] private string progresoTexto = "0%";
-    [ObservableProperty] private double progresoValor = 0;
-
-    [ObservableProperty] private string textoBotonAccion = "Cargando...";
-
-    // Historial tipado correctamente
-    [ObservableProperty] private ObservableCollection<RelevoListResponse> historial = new();
-
-    private MiActivoResponse? miActivo;
+    // Estado de los 4 rondines del día (para mostrar resumen)
+    [ObservableProperty] private bool amsEnviado;
+    [ObservableProperty] private bool bmeEnviado;
+    [ObservableProperty] private bool avsEnviado;
+    [ObservableProperty] private bool bveEnviado;
 
     public MainViewModel(ApiService api, AuthStateService auth)
     {
         _api = api;
         _auth = auth;
-
         Titulo = "Panel Principal";
-        Bienvenida = $"¡Hola, {_auth.NombreGuardia}!";
-        Iniciales = ObtenerIniciales(_auth.NombreGuardia);
-        NombreRol = "Guardia";
+        Turno = _auth.Turno;
     }
 
     [RelayCommand]
-    public async Task CargarRelevoAsync()
+    public async Task CargarDatosAsync()
     {
         if (EstaCargando) return;
         EstaCargando = true;
 
         try
         {
-            // 1. Obtener el relevo activo completo
-            miActivo = await _api.GetMiRelevoActivoAsync();
+            Bienvenida = $"¡Hola, {_auth.NombreGuardia}!";
+            Iniciales = ObtenerIniciales(_auth.NombreGuardia);
 
-            if (miActivo == null)
+            // Actualizar banderas de resumen del día
+            AmsEnviado = RondinFlagsService.EstaEnviado("AMS");
+            BmeEnviado = RondinFlagsService.EstaEnviado("BME");
+            AvsEnviado = RondinFlagsService.EstaEnviado("AVS");
+            BveEnviado = RondinFlagsService.EstaEnviado("BVE");
+
+            var horaActual = TimeOnly.FromDateTime(DateTime.Now);
+            var tipoRondin = AppConstants.ObtenerTipoRondinSegunHoraYTurno(_auth.Turno, horaActual);
+            var existeEnVentana = !string.IsNullOrEmpty(tipoRondin);
+
+            YaRealizado = false;
+
+            // Verificación con bandera local (rápido, sin llamada al API)
+            // En ModoPruebas = true se omite para poder probar múltiples veces
+            if (existeEnVentana && !AppConstants.ModoPruebas)
             {
-                SinRelevo = true;
-                HayRelevo = false;
-                return;
+                YaRealizado = RondinFlagsService.EstaEnviado(tipoRondin);
             }
 
-            var relevo = miActivo.Relevo;
-            SinRelevo = false;
-            HayRelevo = true;
-
-            TurnoNombre = relevo.NombreTurno;
-            RelevoTitulo = $"Relevo del {relevo.Fecha:dd/MM/yyyy}";
-            EstadoBadge = relevo.Estado switch
+            if (YaRealizado)
             {
-                "Pendiente" => "Pendiente",
-                "EnCurso" => "En curso",
-                "Completado" => "Completado",
-                "Incompleto" => "Incompleto",
-                _ => relevo.Estado
-            };
-
-            if (relevo.Saliente != null)
-            {
-                NombreSaliente = relevo.Saliente.NombreGuardia;
-                InicialSaliente = ObtenerIniciales(relevo.Saliente.NombreGuardia);
-                EstadoSaliente = FormatearEstado(relevo.Saliente.Estado);
+                RondinDisponible = false;
+                TipoRondinDisponible = AppConstants.DescripcionTipoRondin(tipoRondin);
+                TextoBotonAccion = "Rondín ya realizado";
             }
-            if (relevo.Entrante != null)
+            else if (existeEnVentana)
             {
-                NombreEntrante = relevo.Entrante.NombreGuardia;
-                InicialEntrante = ObtenerIniciales(relevo.Entrante.NombreGuardia);
-                EstadoEntrante = FormatearEstado(relevo.Entrante.Estado);
+                RondinDisponible = true;
+                TipoRondinDisponible = AppConstants.DescripcionTipoRondin(tipoRondin);
+                TextoBotonAccion = "Realizar rondín ahora";
             }
-
-            var miParticipante = miActivo.Rol == "Saliente" ? relevo.Saliente : relevo.Entrante;
-            if (miParticipante != null)
+            else
             {
-                int total = miParticipante.TotalOk + miParticipante.TotalNoOk;
-                int contestados = total;
-                var checklist = await _api.GetChecklistPuntosAsync();
-                int totalPuntos = checklist?.Sum(c => c.Puntos.Count) ?? 10;
-                double progreso = totalPuntos > 0 ? (double)contestados / totalPuntos : 0;
-                ProgresoValor = progreso;
-                ProgresoTexto = $"{contestados}/{totalPuntos}";
+                RondinDisponible = false;
+                TipoRondinDisponible = "Ninguno (fuera de ventana horaria)";
+                TextoBotonAccion = "No disponible";
             }
-
-            TextoBotonAccion = miParticipante?.Estado switch
-            {
-                "Pendiente" => "Iniciar turno",
-                "EnCurso" => "Continuar rondín",
-                "Completado" => "Ver resumen",
-                "Expirado" => "Turno expirado",
-                _ => "Ver detalles"
-            };
-
-            // Cargar historial
-            await CargarHistorialAsync();
         }
         catch (Exception ex)
         {
-            await Shell.Current.DisplayAlertAsync("Error", "No se pudo cargar el relevo.", "OK");
+            await Shell.Current.DisplayAlertAsync("Error", ex.Message, "OK");
         }
         finally
         {
@@ -132,79 +95,49 @@ public partial class MainViewModel : BaseViewModel
         }
     }
 
-    private async Task CargarHistorialAsync()
-    {
-        var resultado = await _api.GetHistorialRelevosAsync(1, 10);
-        if (resultado != null)
-        {
-            Historial = new ObservableCollection<RelevoListResponse>(resultado.Items);
-        }
-    }
-
     [RelayCommand]
     private async Task AccionPrincipalAsync()
     {
-        if (miActivo == null) return;
-
-        var miParticipante = miActivo.Rol == "Saliente"
-            ? miActivo.Relevo.Saliente
-            : miActivo.Relevo.Entrante;
-        if (miParticipante == null) return;
-
-        switch (miParticipante.Estado)
+        if (YaRealizado)
         {
-            case "Pendiente":
-                var iniciarResult = await _api.IniciarRondinAsync();
-                if (iniciarResult != null && iniciarResult.Exito)
-                    await CargarRelevoAsync();
-                else
-                    await Shell.Current.DisplayAlertAsync("Error", iniciarResult?.Mensaje ?? "No se pudo iniciar el rondín.", "OK");
-                break;
-            case "EnCurso":
-                await Shell.Current.GoToAsync($"RondinPage?participanteId={miActivo.ParticipanteId}&rol={miActivo.Rol}&relevoId={miActivo.Relevo.RelevoId}");
-                break;
-            case "Completado":
-                await Shell.Current.DisplayAlertAsync("Rondín completado", $"Finalizaste tu turno el {miParticipante.FechaFin?.ToString("HH:mm")}", "OK");
-                break;
-            default:
-                await Shell.Current.DisplayAlertAsync("Información", $"Estado actual: {miParticipante.Estado}", "OK");
-                break;
+            await Shell.Current.DisplayAlertAsync("Información", "Ya realizaste este rondín hoy.", "OK");
+            return;
         }
-    }
 
-    [RelayCommand]
-    private async Task VerDetalleHistorialAsync(RelevoListResponse? item)
-    {
-        if (item == null) return;
-        await Shell.Current.GoToAsync($"RelevoDetallePage?relevoId={item.Id}");
-    }
+        if (!RondinDisponible)
+        {
+            await Shell.Current.DisplayAlertAsync("Fuera de horario", "No hay rondín disponible en este momento.", "OK");
+            return;
+        }
 
-    private string ObtenerIniciales(string nombreCompleto)
-    {
-        if (string.IsNullOrWhiteSpace(nombreCompleto)) return "?";
-        var partes = nombreCompleto.Trim().Split(' ');
-        if (partes.Length >= 2)
-            return $"{partes[0][0]}{partes[1][0]}".ToUpper();
-        return nombreCompleto[..1].ToUpper();
-    }
+        var horaActual = TimeOnly.FromDateTime(DateTime.Now);
+        var tipoRondin = AppConstants.ObtenerTipoRondinSegunHoraYTurno(_auth.Turno, horaActual);
+        if (string.IsNullOrEmpty(tipoRondin))
+        {
+            await Shell.Current.DisplayAlertAsync("Error", "No se pudo determinar el tipo de rondín.", "OK");
+            return;
+        }
 
-    private string FormatearEstado(string estado) => estado switch
-    {
-        "Pendiente" => "Pendiente",
-        "EnCurso" => "En curso",
-        "Completado" => "Completado",
-        "Expirado" => "Expirado",
-        _ => estado
-    };
+        await Shell.Current.GoToAsync($"RondinPage?tipoRondin={tipoRondin}");
+    }
 
     [RelayCommand]
     private async Task CerrarSesionAsync()
     {
-        bool respuesta = await Shell.Current.DisplayAlertAsync("Cerrar sesión", "¿Estás seguro que deseas salir de tu cuenta?", "Sí, salir", "Cancelar");
+        bool respuesta = await Shell.Current.DisplayAlertAsync("Cerrar sesión", "¿Estás seguro?", "Sí", "Cancelar");
         if (respuesta)
         {
             _auth.CerrarSesion();
             await Shell.Current.GoToAsync("//LoginPage");
         }
+    }
+
+    private static string ObtenerIniciales(string nombre)
+    {
+        if (string.IsNullOrWhiteSpace(nombre)) return "?";
+        var partes = nombre.Trim().Split(' ');
+        return partes.Length >= 2
+            ? $"{partes[0][0]}{partes[1][0]}".ToUpper()
+            : nombre[..1].ToUpper();
     }
 }

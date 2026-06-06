@@ -17,17 +17,29 @@ public partial class RondinPage : ContentPage, IQueryAttributable
 
     public async void ApplyQueryAttributes(IDictionary<string, object> query)
     {
-        if (!query.TryGetValue("participanteId", out var pIdObj) ||
-            !int.TryParse(pIdObj?.ToString(), out var pId))
-            return;
+        if (query.TryGetValue("tipoRondin", out var tipoObj) && tipoObj?.ToString() is string tipoRondin)
+        {
+            await _vm.InicializarAsync(tipoRondin);
+        }
+    }
 
-        if (!query.TryGetValue("rol", out var rolObj))
-            return;
+    // Método para manejar la captura de fotos desde la cámara
+    private async void OnTomarFotoClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            var photo = await MediaPicker.Default.CapturePhotoAsync();
+            if (photo == null) return;
 
-        if (!query.TryGetValue("relevoId", out var rIdObj) ||
-            !int.TryParse(rIdObj?.ToString(), out var rId))
-            return;
-
-        await _vm.CargarChecklistAsync(pId, rolObj.ToString()!, rId);
+            using var stream = await photo.OpenReadAsync();
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            var bytes = memoryStream.ToArray();
+            await _vm.AgregarFotoAsync(bytes, photo.ContentType);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", $"No se pudo tomar la foto: {ex.Message}", "OK");
+        }
     }
 }

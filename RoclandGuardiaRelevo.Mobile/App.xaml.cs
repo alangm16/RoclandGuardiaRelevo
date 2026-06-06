@@ -32,5 +32,11 @@ namespace RoclandGuardiaRelevo.Mobile
                 return;
             }
         }
+
+        protected override async void OnResume()
+        {
+            base.OnResume();
+            // Opcional: verificar token
+        }
     }
 }

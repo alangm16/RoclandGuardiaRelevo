@@ -2,6 +2,7 @@
 
 namespace RoclandGuardiaRelevo.Mobile.Models;
 
+// ======================== AUTENTICACIÓN ========================
 public class LoginRequest
 {
     [JsonPropertyName("username")]
@@ -26,8 +27,6 @@ public class LoginResponse
     public DateTime Expiracion { get; set; }
     [JsonPropertyName("usuario")]
     public UsuarioTokenDto? Usuario { get; set; }
-
-    // Propiedades de conveniencia (mapeadas desde Usuario)
     public string NombreCompleto => Usuario?.NombreCompleto ?? string.Empty;
     public string Username => Usuario?.Username ?? string.Empty;
     public int UsuarioId => Usuario?.Id ?? 0;
@@ -47,369 +46,195 @@ public class UsuarioTokenDto
 
 public class MiPerfilResponse
 {
-    [JsonPropertyName("perfilId")]
-    public int PerfilId { get; set; }
     [JsonPropertyName("superAdminUsuarioId")]
     public int SuperAdminUsuarioId { get; set; }
+    [JsonPropertyName("username")]
+    public string Username { get; set; } = string.Empty;
     [JsonPropertyName("nombreCompleto")]
     public string NombreCompleto { get; set; } = string.Empty;
     [JsonPropertyName("nombreRol")]
-    public string NombreRol { get; set; } = string.Empty;   // antes TipoPerfil
+    public string NombreRol { get; set; } = string.Empty;
     [JsonPropertyName("nivelRol")]
     public int NivelRol { get; set; }
-    [JsonPropertyName("turno")]
+    [JsonPropertyName("plataforma")]
+    public string Plataforma { get; set; } = string.Empty;
+    [JsonPropertyName("turno")]          // Campo que debe devolver el backend: "Diurno" o "Nocturno"
     public string? Turno { get; set; }
     [JsonPropertyName("numeroEmpleado")]
     public string? NumeroEmpleado { get; set; }
 }
 
-public class RelevoHoyResponse
+// ======================== PUNTOS DEL CATÁLOGO ========================
+public class PuntoDto
 {
-    public int RelevoId { get; set; }
-    public DateOnly Fecha { get; set; }
-    public string NombreTurno { get; set; }
-    public string Estado { get; set; }
-    public TimeOnly HoraInicioSaliente { get; set; }
-    public TimeOnly HoraFinSaliente { get; set; }
-    public TimeOnly HoraInicioEntrante { get; set; }
-    public TimeOnly HoraFinEntrante { get; set; }
-    public ParticipanteSummaryResponse? Saliente { get; set; }
-    public ParticipanteSummaryResponse? Entrante { get; set; }
-}
-
-public class ParticipanteSummaryResponse
-{
+    [JsonPropertyName("id")]
     public int Id { get; set; }
-    public int PerfilId { get; set; }
-    public string NombreGuardia { get; set; }
-    public string Rol { get; set; }
-    public string Estado { get; set; }
-    public DateTime? FechaInicio { get; set; }
-    public DateTime? FechaFin { get; set; }
-    public int TotalOk { get; set; }
-    public int TotalNoOk { get; set; }
-}
-
-public class CategoriaChecklistDto
-{
-    public string Categoria { get; set; }
-    public List<PuntoChecklistDto> Puntos { get; set; }
-}
-
-public class PuntoChecklistDto
-{
-    public int Id { get; set; }
-    public string Nombre { get; set; }
+    [JsonPropertyName("categoria")]
+    public string Categoria { get; set; } = string.Empty;
+    [JsonPropertyName("nombre")]
+    public string Nombre { get; set; } = string.Empty;
+    [JsonPropertyName("descripcion")]
     public string? Descripcion { get; set; }
+    [JsonPropertyName("orden")]
     public int Orden { get; set; }
 }
 
-public class GuardarRespuestaRequest
+// Para agrupar en la UI por categoría
+public class CategoriaChecklistDto
 {
-    [JsonPropertyName("puntoId")]
-    public int PuntoId { get; set; }
-
-    [JsonPropertyName("respuesta")]
-    public bool Respuesta { get; set; }
-
-    [JsonPropertyName("comentario")]
-    public string? Comentario { get; set; }
+    public string Categoria { get; set; } = string.Empty;
+    public List<PuntoDto> Puntos { get; set; } = new();
 }
 
-public class CrearIncidenciaRequest
+// ======================== CHECKLIST (RONDÍN) ========================
+public class ChecklistPuntoItemDto
 {
-    [JsonPropertyName("relevoId")]
-    public int RelevoId { get; set; }
+    [JsonPropertyName("idPunto")]
+    public int IdPunto { get; set; }
+    [JsonPropertyName("estado")]
+    public bool Estado { get; set; }   // true = OK, false = Problema
+}
 
-    [JsonPropertyName("puntoId")]
-    public int PuntoId { get; set; }
+public class GuardarChecklistDto
+{
+    [JsonPropertyName("tipoRondin")]
+    public string TipoRondin { get; set; } = string.Empty;   // AMS, BME, AVS, BVE
+    [JsonPropertyName("observacion")]
+    public string? Observacion { get; set; }
+    [JsonPropertyName("firma")]
+    public byte[]? Firma { get; set; }
+    [JsonPropertyName("puntos")]
+    public List<ChecklistPuntoItemDto> Puntos { get; set; } = new();
+}
 
-    [JsonPropertyName("tipoOrigen")]
-    public string TipoOrigen { get; set; } = "NoOk";
+public class GuardarChecklistResponseDto
+{
+    [JsonPropertyName("idChecklist")]
+    public int IdChecklist { get; set; }
+    [JsonPropertyName("incidenciasGeneradas")]
+    public int IncidenciasGeneradas { get; set; }
+}
 
+public class ChecklistResumenDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+    [JsonPropertyName("fechaHoraLocal")]
+    public DateTime FechaHoraLocal { get; set; }
+    [JsonPropertyName("tipoRondin")]
+    public string TipoRondin { get; set; } = string.Empty;
+    [JsonPropertyName("descripcionRondin")]
+    public string DescripcionRondin { get; set; } = string.Empty;
+    [JsonPropertyName("idGuardia")]
+    public int IdGuardia { get; set; }
+    [JsonPropertyName("guardia")]
+    public string Guardia { get; set; } = string.Empty;
+    [JsonPropertyName("todoOk")]
+    public bool TodoOk { get; set; }
+    [JsonPropertyName("tieneFirma")]
+    public bool TieneFirma { get; set; }
+}
+
+public class ChecklistDetalleDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+    [JsonPropertyName("fechaHoraLocal")]
+    public DateTime FechaHoraLocal { get; set; }
+    [JsonPropertyName("tipoRondin")]
+    public string TipoRondin { get; set; } = string.Empty;
+    [JsonPropertyName("descripcionRondin")]
+    public string DescripcionRondin { get; set; } = string.Empty;
+    [JsonPropertyName("idGuardia")]
+    public int IdGuardia { get; set; }
+    [JsonPropertyName("guardia")]
+    public string Guardia { get; set; } = string.Empty;
+    [JsonPropertyName("observacion")]
+    public string? Observacion { get; set; }
+    [JsonPropertyName("tieneFirma")]
+    public bool TieneFirma { get; set; }
+    [JsonPropertyName("puntos")]
+    public List<ChecklistPuntoDetalleDto> Puntos { get; set; } = new();
+}
+
+public class ChecklistPuntoDetalleDto
+{
+    [JsonPropertyName("idPunto")]
+    public int IdPunto { get; set; }
+    [JsonPropertyName("categoria")]
+    public string Categoria { get; set; } = string.Empty;
+    [JsonPropertyName("nombre")]
+    public string Nombre { get; set; } = string.Empty;
     [JsonPropertyName("descripcion")]
     public string? Descripcion { get; set; }
-
-    [JsonPropertyName("fotoBase64")]
-    public string? FotoBase64 { get; set; }
-
-    [JsonPropertyName("mimeType")]
-    public string? MimeType { get; set; }
+    [JsonPropertyName("orden")]
+    public int Orden { get; set; }
+    [JsonPropertyName("estado")]
+    public bool Estado { get; set; }
 }
 
-public class IncidenciaResponse
+// ======================== INCIDENCIAS ========================
+public class IncidenciaDto
 {
+    [JsonPropertyName("id")]
     public int Id { get; set; }
-    public int RelevoId { get; set; }
-    public DateOnly FechaRelevo { get; set; }
-    public int PuntoId { get; set; }
-    public string NombrePunto { get; set; } = string.Empty;
-    public string CategoriaPunto { get; set; } = string.Empty;
-    public string TipoOrigen { get; set; } = string.Empty;
-    public string? Descripcion { get; set; }
-    public string? FotoBase64 { get; set; }  // O URL si se usa blob storage
-    public string? MimeType { get; set; }
-    public string Estado { get; set; } = string.Empty;
-    public int? ResueltaPorId { get; set; }
-    public string? ResueltaPorNombre { get; set; }
-    public DateTime? FechaResolucion { get; set; }
-    public string? NotaResolucion { get; set; }
+    [JsonPropertyName("fechaDeteccionLocal")]
+    public DateTime FechaDeteccionLocal { get; set; }
+    [JsonPropertyName("idChecklistSaliente")]
+    public int IdChecklistSaliente { get; set; }
+    [JsonPropertyName("tipoRondinSaliente")]
+    public string TipoRondinSaliente { get; set; } = string.Empty;
+    [JsonPropertyName("guardiaSaliente")]
+    public string GuardiaSaliente { get; set; } = string.Empty;
+    [JsonPropertyName("fechaSaliente")]
+    public DateTime FechaSaliente { get; set; }
+    [JsonPropertyName("idChecklistEntrante")]
+    public int IdChecklistEntrante { get; set; }
+    [JsonPropertyName("tipoRondinEntrante")]
+    public string TipoRondinEntrante { get; set; } = string.Empty;
+    [JsonPropertyName("guardiaEntrante")]
+    public string GuardiaEntrante { get; set; } = string.Empty;
+    [JsonPropertyName("fechaEntrante")]
+    public DateTime FechaEntrante { get; set; }
+    [JsonPropertyName("idPunto")]
+    public int IdPunto { get; set; }
+    [JsonPropertyName("categoria")]
+    public string Categoria { get; set; } = string.Empty;
+    [JsonPropertyName("punto")]
+    public string Punto { get; set; } = string.Empty;
+    [JsonPropertyName("descripcionPunto")]
+    public string? DescripcionPunto { get; set; }
+    [JsonPropertyName("resuelta")]
+    public bool Resuelta { get; set; }
+    [JsonPropertyName("fechaResolucionLocal")]
+    public DateTime? FechaResolucionLocal { get; set; }
+    public string GuardiaComparacion =>
+    $"{GuardiaSaliente} (saliente) vs {GuardiaEntrante} (entrante)";
 }
 
-public class IniciarParticipanteRequest
+// ======================== FOTOS ========================
+public class AgregarFotoDto
 {
-    [JsonPropertyName("observaciones")]
-    public string? Observaciones { get; set; }
+    [JsonPropertyName("idChecklist")]
+    public int IdChecklist { get; set; }
+    [JsonPropertyName("foto")]
+    public byte[] Foto { get; set; } = Array.Empty<byte>();
+    [JsonPropertyName("mimeType")]
+    public string MimeType { get; set; } = "image/jpeg";
 }
 
-public class CerrarParticipanteRequest
-{
-    public string FirmaBase64 { get; set; }
-    public string? Observaciones { get; set; }
-    public List<GuardarRespuestaRequest> Respuestas { get; set; }
-}
-
+// ======================== UTILIDADES ========================
 public class PagedResult<T>
 {
-    public IReadOnlyList<T> Items { get; set; } = [];
-    public int TotalCount { get; set; }
-    public int Page { get; set; }
-    public int PageSize { get; set; }
-    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
-    public bool HasNext => Page < TotalPages;
-    public bool HasPrev => Page > 1;
-}
-
-public class MiActivoResponse
-{
-    [JsonPropertyName("relevo")]
-    public RelevoHoyResponse Relevo { get; set; } = new();
-
-    [JsonPropertyName("participanteId")]
-    public int ParticipanteId { get; set; }
-
-    [JsonPropertyName("rol")]
-    public string Rol { get; set; } = string.Empty;
-
-    [JsonPropertyName("estadoParticipante")]
-    public string EstadoParticipante { get; set; } = string.Empty;
-
-    [JsonPropertyName("ventanaInicio")]
-    public TimeOnly VentanaInicio { get; set; }
-
-    [JsonPropertyName("ventanaFin")]
-    public TimeOnly VentanaFin { get; set; }
-
-    [JsonPropertyName("estaDentroVentana")]
-    public bool EstaDentroVentana { get; set; }
-
-    [JsonPropertyName("puedeIniciar")]
-    public bool PuedeIniciar { get; set; }
-
-    [JsonPropertyName("puedeCerrar")]
-    public bool PuedeCerrar { get; set; }
-}
-
-public class ChecklistRespuestaResponse
-{
-    public int Id { get; set; }
-    public int ParticipanteId { get; set; }
-    public int PuntoId { get; set; }
-    public string NombrePunto { get; set; } = string.Empty;
-    public string CategoriaPunto { get; set; } = string.Empty;
-    public bool Respuesta { get; set; }
-    public string? Comentario { get; set; }
-    public DateTime FechaRespuesta { get; set; }
-}
-
-public class ActualizarIncidenciaRequest
-{
-    [JsonPropertyName("descripcion")]
-    public string? Descripcion { get; set; }
-
-    [JsonPropertyName("fotoBase64")]
-    public string? FotoBase64 { get; set; }
-
-    [JsonPropertyName("mimeType")]
-    public string? MimeType { get; set; }
-}
-
-public class RelevoDetalleResponse
-{
-    [JsonPropertyName("id")]
-    public int Id { get; set; }
-
-    [JsonPropertyName("configTurnoId")]
-    public int ConfigTurnoId { get; set; }
-
-    [JsonPropertyName("nombreTurno")]
-    public string NombreTurno { get; set; } = string.Empty;
-
-    [JsonPropertyName("fecha")]
-    public DateOnly Fecha { get; set; }
-
-    [JsonPropertyName("estado")]
-    public string Estado { get; set; } = string.Empty;
-
-    [JsonPropertyName("saliente")]
-    public ParticipanteResponse? Saliente { get; set; }
-
-    [JsonPropertyName("entrante")]
-    public ParticipanteResponse? Entrante { get; set; }
-
-    [JsonPropertyName("incidencias")]
-    public List<IncidenciaResponse> Incidencias { get; set; } = new();
-
-    [JsonPropertyName("activo")]
-    public bool Activo { get; set; }
-
-    [JsonPropertyName("fechaCreacion")]
-    public DateTime FechaCreacion { get; set; }
-
-    [JsonPropertyName("creadoPor")]
-    public int? CreadoPor { get; set; }
-
-    [JsonPropertyName("fechaModificacion")]
-    public DateTime? FechaModificacion { get; set; }
-
-    [JsonPropertyName("modificadoPor")]
-    public int? ModificadoPor { get; set; }
-}
-
-public class ParticipanteResponse
-{
-    [JsonPropertyName("id")]
-    public int Id { get; set; }
-
-    [JsonPropertyName("relevoId")]
-    public int RelevoId { get; set; }
-
-    [JsonPropertyName("perfilId")]
-    public int PerfilId { get; set; }
-
-    [JsonPropertyName("nombreGuardia")]
-    public string NombreGuardia { get; set; } = string.Empty;
-
-    [JsonPropertyName("numeroEmpleado")]
-    public string? NumeroEmpleado { get; set; }
-
-    [JsonPropertyName("rol")]
-    public string Rol { get; set; } = string.Empty;
-
-    [JsonPropertyName("estado")]
-    public string Estado { get; set; } = string.Empty;
-
-    [JsonPropertyName("fechaInicio")]
-    public DateTime? FechaInicio { get; set; }
-
-    [JsonPropertyName("fechaFin")]
-    public DateTime? FechaFin { get; set; }
-
-    [JsonPropertyName("firmaBase64")]
-    public string? FirmaBase64 { get; set; }
-
-    [JsonPropertyName("observaciones")]
-    public string? Observaciones { get; set; }
-
-    [JsonPropertyName("respuestas")]
-    public List<ChecklistRespuestaResponse> Respuestas { get; set; } = new();
-
-    [JsonPropertyName("activo")]
-    public bool Activo { get; set; }
-
-    [JsonPropertyName("fechaCreacion")]
-    public DateTime FechaCreacion { get; set; }
-
-    [JsonPropertyName("creadoPor")]
-    public int? CreadoPor { get; set; }
-
-    [JsonPropertyName("fechaModificacion")]
-    public DateTime? FechaModificacion { get; set; }
-
-    [JsonPropertyName("modificadoPor")]
-    public int? ModificadoPor { get; set; }
-}
-
-// Agregar después de ConfigTurnoResponse
-public class ConfigTurnoResponse
-{
-    public int Id { get; set; }
-    public string Nombre { get; set; } = string.Empty;
-    public bool Activo { get; set; }
-    public TimeOnly HoraInicioSaliente { get; set; }
-    public TimeOnly HoraFinSaliente { get; set; }
-    public TimeOnly HoraInicioEntrante { get; set; }
-    public TimeOnly HoraFinEntrante { get; set; }
-    // Horarios de prueba
-    public TimeOnly? HoraInicioSalientePrueba { get; set; }
-    public TimeOnly? HoraFinSalientePrueba { get; set; }
-    public TimeOnly? HoraInicioEntrantePrueba { get; set; }
-    public TimeOnly? HoraFinEntrantePrueba { get; set; }
-}
-
-// Agregar RelevoListResponse (para historial)
-public class RelevoListResponse
-{
-    public int Id { get; set; }
-    public DateOnly Fecha { get; set; }
-    public string NombreTurno { get; set; } = string.Empty;
-    public string Estado { get; set; } = string.Empty;
-    public string? NombreSaliente { get; set; }
-    public string? NombreEntrante { get; set; }
-    public int TotalIncidenciasAbiertas { get; set; }
-    public int TotalIncidenciasResueltas { get; set; }
-}
-
-// Modelos de respuesta de rondín
-public class IniciarRondinResponse
-{
-    public bool Exito { get; set; }
-    public int CodigoRetorno { get; set; }
-    public string Mensaje { get; set; } = string.Empty;
-    public int? ParticipanteId { get; set; }
-    public int? RelevoId { get; set; }
-    public int? ConfigTurnoId { get; set; }
-    public string? Rol { get; set; }
-}
-
-public class GuardarRespuestaResponse
-{
-    public bool Exito { get; set; }
-    public int CodigoRetorno { get; set; }
-    public string Mensaje { get; set; } = string.Empty;
-    public int? RespuestaId { get; set; }
-}
-
-public class CompletarRondinResponse
-{
-    public bool Exito { get; set; }
-    public int CodigoRetorno { get; set; }
-    public string Mensaje { get; set; } = string.Empty;
-    public bool RelevoCompletado { get; set; }
-    public int? IncidenciasGeneradas { get; set; }
-}
-
-public class CompletarRondinRequest
-{
-    [JsonPropertyName("firmaBase64")]
-    public string FirmaBase64 { get; set; } = string.Empty;
-
-    [JsonPropertyName("observaciones")]
-    public string? Observaciones { get; set; }
-
-    [JsonPropertyName("respuestas")]
-    public List<GuardarRespuestaRequest> Respuestas { get; set; } = new();
-}
-
-// Discrepancia
-public class DiscrepanciaRespuestaResponse
-{
-    public int PuntoId { get; set; }
-    public string NombrePunto { get; set; } = string.Empty;
-    public string CategoriaPunto { get; set; } = string.Empty;
-    public bool? RespuestaSaliente { get; set; }
-    public string? ComentarioSaliente { get; set; }
-    public bool? RespuestaEntrante { get; set; }
-    public string? ComentarioEntrante { get; set; }
-    public bool EsDiscrepancia { get; set; }
+    [JsonPropertyName("items")]
+    public IReadOnlyList<T> Items { get; set; } = new List<T>();
+    [JsonPropertyName("totalRegistros")]
+    public int TotalRegistros { get; set; }
+    [JsonPropertyName("paginaActual")]
+    public int PaginaActual { get; set; }
+    [JsonPropertyName("registrosPorPagina")]
+    public int RegistrosPorPagina { get; set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalRegistros / RegistrosPorPagina);
+    public bool HasNext => PaginaActual < TotalPages;
+    public bool HasPrev => PaginaActual > 1;
 }
