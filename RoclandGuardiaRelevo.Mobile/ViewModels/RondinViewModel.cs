@@ -34,13 +34,13 @@ public partial class RondinViewModel : BaseViewModel
     {
         tipoRondin = tipo;
 
-        // Verificar bandera local antes de cargar (solo en producción)
-        if (!AppConstants.ModoPruebas && RondinFlagsService.EstaEnviado(tipo))
+        // Verificar en el servidor antes de permitir el llenado
+        var hoy = DateTime.Today;
+        var historialHoy = await _api.GetHistorialAsync(idGuardia: null, desde: hoy, hasta: hoy);
+        if (historialHoy?.Any(h => h.TipoRondin == tipo) == true)
         {
-            await Shell.Current.DisplayAlertAsync(
-                "Ya completado",
-                $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya fue enviado hoy.",
-                "OK");
+            await Shell.Current.DisplayAlertAsync("Ya completado",
+                $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya se encuentra registrado hoy en el sistema.", "OK");
             await Shell.Current.GoToAsync("//MainPage");
             return;
         }
@@ -146,12 +146,13 @@ public partial class RondinViewModel : BaseViewModel
             return;
         }
 
-        // Guardia de bandera local (doble verificación al momento de enviar)
-        if (!AppConstants.ModoPruebas && RondinFlagsService.EstaEnviado(tipoRondin))
+        // Última verificación en el servidor justo antes de iniciar el guardado
+        var hoy = DateTime.Today;
+        var historialHoy = await _api.GetHistorialAsync(idGuardia: null, desde: hoy, hasta: hoy);
+        if (historialHoy?.Any(h => h.TipoRondin == tipoRondin) == true)
         {
-            await Shell.Current.DisplayAlertAsync("Ya enviado",
-                $"El rondín {tipoRondin} ya fue registrado hoy.",
-                "OK");
+            await Shell.Current.DisplayAlertAsync("Ya completado",
+                "El otro guardia ya envió este rondín hace un momento.", "OK");
             await Shell.Current.GoToAsync("//MainPage");
             return;
         }
