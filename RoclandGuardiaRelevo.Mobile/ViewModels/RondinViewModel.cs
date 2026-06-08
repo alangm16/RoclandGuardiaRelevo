@@ -34,15 +34,30 @@ public partial class RondinViewModel : BaseViewModel
     {
         tipoRondin = tipo;
 
-        // Verificar en el servidor antes de permitir el llenado
-        var hoy = DateTime.Today;
-        var historialHoy = await _api.GetHistorialAsync(idGuardia: null, desde: hoy, hasta: hoy);
-        if (historialHoy?.Any(h => h.TipoRondin == tipo) == true)
+        // 1. VERIFICACIÓN DE DUPLICADOS (Depende del modo)
+        if (AppConstants.ModoPruebas)
         {
-            await Shell.Current.DisplayAlertAsync("Ya completado",
-                $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya se encuentra registrado hoy en el sistema.", "OK");
-            await Shell.Current.GoToAsync("//MainPage");
-            return;
+            // MODO PRUEBAS: Solo confiamos en el flag local para bloquear.
+            if (RondinFlagsService.EstaEnviado(_auth.IdGuardia, tipoRondin))
+            {
+                await Shell.Current.DisplayAlertAsync("Ya completado",
+                    $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya se envió en esta sesión de prueba.", "OK");
+                await Shell.Current.GoToAsync("//MainPage");
+                return;
+            }
+        }
+        else
+        {
+            // MODO PRODUCCIÓN: Consultamos la BD real para evitar duplicidad global
+            var hoy = DateTime.Today;
+            var historialHoy = await _api.GetHistorialAsync(idGuardia: null, desde: hoy, hasta: hoy);
+            if (historialHoy?.Any(h => h.TipoRondin == tipo) == true)
+            {
+                await Shell.Current.DisplayAlertAsync("Ya completado",
+                    $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya se encuentra registrado hoy en el sistema.", "OK");
+                await Shell.Current.GoToAsync("//MainPage");
+                return;
+            }
         }
 
         Subtitulo = tipo switch
@@ -201,8 +216,8 @@ public partial class RondinViewModel : BaseViewModel
                 });
             }
 
-            // Marcar bandera local: este tipo ya no se puede volver a enviar hoy
-            //RondinFlagsService.MarcarEnviado(tipoRondin);
+            RondinFlagsService.RegistrarGuardiaActivo(_auth.IdGuardia);
+            RondinFlagsService.MarcarEnviado(_auth.IdGuardia, tipoRondin);
 
             string msg = $"Rondín guardado correctamente.\nIncidencias generadas: {resultado.IncidenciasGeneradas}";
             await Shell.Current.DisplayAlertAsync("Éxito", msg, "OK");
