@@ -20,15 +20,15 @@ public static class AppConstants
 
     public const bool ModoPruebas = false;
 
-    public static readonly TimeOnly HoraInicioAMS = new(09, 30);
-    public static readonly TimeOnly HoraFinAMS = new(09, 35);
-    public static readonly TimeOnly HoraInicioBME = new(09, 35);
-    public static readonly TimeOnly HoraFinBME = new(09, 40);
+    public static readonly TimeOnly HoraInicioAMS = new(09, 45);
+    public static readonly TimeOnly HoraFinAMS = new(09, 48);
+    public static readonly TimeOnly HoraInicioBME = new(09, 48);
+    public static readonly TimeOnly HoraFinBME = new(09, 51);
 
-    public static readonly TimeOnly HoraInicioAVS = new(09, 45);
-    public static readonly TimeOnly HoraFinAVS = new(09, 50);
-    public static readonly TimeOnly HoraInicioBVE = new(09, 55);
-    public static readonly TimeOnly HoraFinBVE = new(10, 00);
+    public static readonly TimeOnly HoraInicioAVS = new(09, 55);
+    public static readonly TimeOnly HoraFinAVS = new(10, 00);
+    public static readonly TimeOnly HoraInicioBVE = new(10, 00);
+    public static readonly TimeOnly HoraFinBVE = new(10, 05);
 
     // Guardia A (diurno) puede hacer AMS y AVS; Guardia B (nocturno) puede hacer BME y BVE
     // El backend devuelve el turno del guardia: "Diurno" o "Nocturno"
