@@ -20,18 +20,23 @@ public static class AppConstants
 
     public const bool ModoPruebas = false;
 
-    public static readonly TimeOnly HoraInicioAMS = new(10, 00);
-    public static readonly TimeOnly HoraFinAMS = new(10, 04);
-    public static readonly TimeOnly HoraInicioBME = new(10, 04);
-    public static readonly TimeOnly HoraFinBME = new(10, 08);
+    public static readonly TimeOnly HoraInicioAMS = new(10, 35);
+    public static readonly TimeOnly HoraFinAMS = new(10, 39);
+    public static readonly TimeOnly HoraInicioBME = new(10, 43);
+    public static readonly TimeOnly HoraFinBME = new(10, 47);
 
-    public static readonly TimeOnly HoraInicioAVS = new(10, 10);
-    public static readonly TimeOnly HoraFinAVS = new(10, 14);
-    public static readonly TimeOnly HoraInicioBVE = new(10, 14);
-    public static readonly TimeOnly HoraFinBVE = new(10, 18);
+    public static readonly TimeOnly HoraInicioAVS = new(10, 50);
+    public static readonly TimeOnly HoraFinAVS = new(10, 54);
+    public static readonly TimeOnly HoraInicioBVE = new(10, 58);
+    public static readonly TimeOnly HoraFinBVE = new(11, 02);
 
-    // Analiza si un rondín hecho previamente encaja en la ventana de horas ACTUAL.
-    // Al cambiar las horas de prueba, los rondines viejos quedarán fuera y te dejará volver a probar.
+    /// <summary>
+    /// [OBSOLETO — No usar en código nuevo]
+    /// La validación de ventana horaria ahora la hace el servidor vía
+    /// SP_ROCLAND_RELEVO_ESTADO_DIA / GetEstadoDiaAsync.
+    /// Este método se mantiene solo por compatibilidad con ModoPruebas.
+    /// </summary>
+    [Obsolete("Usar GetEstadoDiaAsync en ApiService. Este método solo existe para ModoPruebas.")]
     public static bool EstaEnVentanaActual(string tipo, DateTime fechaHoraLocal)
     {
         var hora = TimeOnly.FromDateTime(fechaHoraLocal);

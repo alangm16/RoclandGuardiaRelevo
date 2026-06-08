@@ -238,3 +238,17 @@ public class PagedResult<T>
     public bool HasNext => PaginaActual < TotalPages;
     public bool HasPrev => PaginaActual > 1;
 }
+
+public class EstadoRondinDto
+{
+    public string TipoRondin { get; set; } = string.Empty;
+    public bool Existe { get; set; }
+    public int? IdChecklist { get; set; }
+    public int? IdGuardiaQueLo { get; set; }
+    public bool YoLoHice { get; set; }
+}
+
+public class EstadoDiaDto
+{
+    public List<EstadoRondinDto> Rondines { get; set; } = new();
+}

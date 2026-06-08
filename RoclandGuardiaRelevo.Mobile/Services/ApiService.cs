@@ -162,6 +162,30 @@ public class ApiService
         catch { return null; }
     }
 
+    /// <summary>
+    /// Obtiene el estado autoritativo de los 4 rondines del día.
+    /// El servidor calcula todo; la app solo muestra lo que recibe.
+    /// </summary>
+    /// <param name="fechaLocal">
+    /// Fecha local del dispositivo. Se envía para evitar problemas de zona horaria.
+    /// Si es null se usa DateTime.Today.
+    /// </param>
+    public async Task<EstadoDiaDto?> GetEstadoDiaAsync(DateTime? fechaLocal = null)
+    {
+        SetAuthHeader();
+
+        var fecha = (fechaLocal ?? DateTime.Today).ToString("yyyy-MM-dd");
+        var url = $"{ApiBasePath}/checklist/estado-dia?fechaLocal={fecha}";
+
+        try
+        {
+            var response = await _http.GetAsync(url);
+            if (!response.IsSuccessStatusCode) return null;
+            return await response.Content.ReadFromJsonAsync<EstadoDiaDto>(JsonOpts);
+        }
+        catch { return null; }
+    }
+
     public async Task<ChecklistDetalleDto?> GetDetalleChecklistAsync(int idChecklist)
     {
         SetAuthHeader();

@@ -58,48 +58,45 @@ public partial class MainViewModel : BaseViewModel
             Bienvenida = $"¡Hola, {_auth.NombreGuardia}!";
             Iniciales = ObtenerIniciales(_auth.NombreGuardia);
 
-            var hoy = DateTime.Today;
-            List<string> rondinesEnBd = new();
+            // ── 1. Llamar al endpoint autoritativo ──────────────────────
+            // Pasamos la fecha LOCAL del dispositivo para que el servidor
+            // haga la conversión UTC correcta.
+            var estadoDia = await _api.GetEstadoDiaAsync(DateTime.Today);
 
-            // Declarado FUERA del try para que exista en todo el método
-            List<ChecklistResumenDto> historialHoy = new();
-
-            try
+            // ── 2. Actualizar indicadores de estado del día ──────────────
+            // El servidor ya sabe qué existe; no hacemos aritmética aquí.
+            if (estadoDia != null && estadoDia.Rondines.Count > 0)
             {
-                var resultado = await _api.GetHistorialAsync(idGuardia: null, desde: hoy, hasta: hoy);
-                if (resultado != null) historialHoy = resultado;
-
-                // MAGIA AQUÍ: Solo tomamos en cuenta los rondines cuyo registro coincida 
-                // con las horas que tienes actualmente configuradas en AppConstants
-                rondinesEnBd = historialHoy
-                    .Where(h => AppConstants.EstaEnVentanaActual(h.TipoRondin, h.FechaHoraLocal))
-                    .Select(h => h.TipoRondin)
-                    .Distinct()
-                    .ToList();
+                AmsEnviado = estadoDia.Rondines.FirstOrDefault(r => r.TipoRondin == "AMS")?.Existe ?? false;
+                BmeEnviado = estadoDia.Rondines.FirstOrDefault(r => r.TipoRondin == "BME")?.Existe ?? false;
+                AvsEnviado = estadoDia.Rondines.FirstOrDefault(r => r.TipoRondin == "AVS")?.Existe ?? false;
+                BveEnviado = estadoDia.Rondines.FirstOrDefault(r => r.TipoRondin == "BVE")?.Existe ?? false;
             }
-            catch { /* Falla silenciosa si no hay red */ }
+            else
+            {
+                // Sin red: dejar todo en false (estado desconocido)
+                AmsEnviado = BmeEnviado = AvsEnviado = BveEnviado = false;
+            }
 
-            AmsEnviado = rondinesEnBd.Contains("AMS");
-            BmeEnviado = rondinesEnBd.Contains("BME");
-            AvsEnviado = rondinesEnBd.Contains("AVS");
-            BveEnviado = rondinesEnBd.Contains("BVE");
-
+            // ── 3. Determinar rondín disponible en este momento ──────────
             var horaActual = TimeOnly.FromDateTime(DateTime.Now);
             var tipoRondin = AppConstants.ObtenerTipoRondinSegunHoraYTurno(_auth.Turno, horaActual);
             var existeVentana = !string.IsNullOrEmpty(tipoRondin);
 
+            // ── 4. ¿Ya lo hizo el guardia autenticado? ───────────────────
+            // Usamos el campo YoLoHice que calculó el servidor.
+            // Si no hay red, asumimos que NO (permite reintentar al volver conexión).
             bool guardiaYaEnvio = false;
-            if (existeVentana)
+            if (existeVentana && estadoDia != null)
             {
-                // Verificamos si TÚ ya enviaste este rondín DENTRO de las horas configuradas
-                guardiaYaEnvio = historialHoy.Any(h =>
-                    h.IdGuardia == _auth.IdGuardia &&
-                    h.TipoRondin == tipoRondin &&
-                    AppConstants.EstaEnVentanaActual(h.TipoRondin, h.FechaHoraLocal));
+                guardiaYaEnvio = estadoDia.Rondines
+                    .FirstOrDefault(r => r.TipoRondin == tipoRondin)
+                    ?.YoLoHice ?? false;
             }
 
             YaRealizado = guardiaYaEnvio;
 
+            // ── 5. Actualizar texto/estado del botón ─────────────────────
             if (!existeVentana)
             {
                 RondinDisponible = false;
@@ -128,6 +125,7 @@ public partial class MainViewModel : BaseViewModel
             EstaCargando = false;
         }
     }
+
 
     [RelayCommand]
     private async Task AccionPrincipalAsync()

@@ -34,30 +34,37 @@ public partial class RondinViewModel : BaseViewModel
     {
         tipoRondin = tipo;
 
-        var hoy = DateTime.Today;
-        var historialHoy = await _api.GetHistorialAsync(idGuardia: null, desde: hoy, hasta: hoy);
+        // ── Verificación autoritativa: ¿ya existe este rondín hoy? ──────
+        // Usamos el mismo endpoint que MainViewModel para garantizar
+        // consistencia. No duplicamos lógica de fechas.
+        var estadoDia = await _api.GetEstadoDiaAsync(DateTime.Today);
 
-        if (historialHoy != null)
+        if (estadoDia != null)
         {
-            // Filtramos únicamente los del tipo actual que estén dentro de las horas de prueba
-            var rondinesValidos = historialHoy
-                .Where(h => h.TipoRondin == tipo && AppConstants.EstaEnVentanaActual(tipo, h.FechaHoraLocal))
-                .ToList();
+            var estadoEsteRondin = estadoDia.Rondines
+                .FirstOrDefault(r => r.TipoRondin == tipo);
 
-            if (rondinesValidos.Any(h => h.IdGuardia == _auth.IdGuardia))
+            if (estadoEsteRondin != null)
             {
-                await Shell.Current.DisplayAlertAsync("Ya completado",
-                    $"Tú ya registraste el rondín {AppConstants.DescripcionTipoRondin(tipo)} en esta ventana de horas.", "OK");
-                await Shell.Current.GoToAsync("..");
-                return;
-            }
+                // ¿YO ya lo hice?
+                if (estadoEsteRondin.YoLoHice)
+                {
+                    await Shell.Current.DisplayAlertAsync("Ya completado",
+                        $"Tú ya registraste el rondín {AppConstants.DescripcionTipoRondin(tipo)} hoy.",
+                        "OK");
+                    await Shell.Current.GoToAsync("..");
+                    return;
+                }
 
-            if (rondinesValidos.Any())
-            {
-                await Shell.Current.DisplayAlertAsync("Ya completado",
-                    $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya se encuentra registrado por el otro guardia en este horario.", "OK");
-                await Shell.Current.GoToAsync("..");
-                return;
+                // ¿El OTRO guardia ya lo hizo?
+                if (estadoEsteRondin.Existe)
+                {
+                    await Shell.Current.DisplayAlertAsync("Ya completado",
+                        $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya fue registrado por otro guardia hoy.",
+                        "OK");
+                    await Shell.Current.GoToAsync("..");
+                    return;
+                }
             }
         }
 
