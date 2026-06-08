@@ -202,7 +202,7 @@ public partial class RondinViewModel : BaseViewModel
             }
 
             // Marcar bandera local: este tipo ya no se puede volver a enviar hoy
-            RondinFlagsService.MarcarEnviado(tipoRondin);
+            //RondinFlagsService.MarcarEnviado(tipoRondin);
 
             string msg = $"Rondín guardado correctamente.\nIncidencias generadas: {resultado.IncidenciasGeneradas}";
             await Shell.Current.DisplayAlertAsync("Éxito", msg, "OK");

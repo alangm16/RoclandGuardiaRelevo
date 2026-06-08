@@ -164,6 +164,24 @@ public partial class MainViewModel : BaseViewModel
             return;
         }
 
+        // --- NUEVA LÓGICA DE VALIDACIÓN ENTRE GUARDIAS ---
+        // Si el guardia actual es entrante (BME o BVE), verificamos si el saliente cumplió
+        if (tipoRondin == "BME" && !AmsEnviado)
+        {
+            bool continuar = await Shell.Current.DisplayAlertAsync("Aviso de Relevo",
+                "El guardia saliente no registró su rondín matutino. No se podrán comparar las anomalías automáticamente. ¿Deseas generar tu rondín de todos modos?",
+                "Sí, continuar", "Cancelar");
+            if (!continuar) return;
+        }
+        else if (tipoRondin == "BVE" && !AvsEnviado)
+        {
+            bool continuar = await Shell.Current.DisplayAlertAsync("Aviso de Relevo",
+                "El guardia saliente no registró su rondín vespertino. No se podrán comparar las anomalías automáticamente. ¿Deseas generar tu rondín de todos modos?",
+                "Sí, continuar", "Cancelar");
+            if (!continuar) return;
+        }
+        // --------------------------------------------------
+
         await Shell.Current.GoToAsync($"RondinPage?tipoRondin={tipoRondin}");
     }
 
