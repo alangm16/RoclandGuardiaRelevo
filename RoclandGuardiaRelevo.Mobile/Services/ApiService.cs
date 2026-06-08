@@ -139,8 +139,11 @@ public class ApiService
         SetAuthHeader();
         var query = System.Web.HttpUtility.ParseQueryString(string.Empty);
         if (idGuardia.HasValue) query["idGuardia"] = idGuardia.Value.ToString();
-        if (desde.HasValue) query["desde"] = desde.Value.ToString("o");
-        if (hasta.HasValue) query["hasta"] = hasta.Value.ToString("o");
+
+        // CORRECCIÓN DE FORMATO: Envía fechas puras para evitar rechazos del backend
+        if (desde.HasValue) query["desde"] = desde.Value.ToString("yyyy-MM-dd");
+        if (hasta.HasValue) query["hasta"] = hasta.Value.ToString("yyyy-MM-dd");
+
         var url = $"{ApiBasePath}/checklist/historial?{query}";
         try
         {

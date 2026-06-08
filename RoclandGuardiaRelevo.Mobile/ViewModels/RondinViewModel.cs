@@ -34,28 +34,25 @@ public partial class RondinViewModel : BaseViewModel
     {
         tipoRondin = tipo;
 
-        // 1. VERIFICACIÓN DE DUPLICADOS (Depende del modo)
-        if (AppConstants.ModoPruebas)
+        // --- BARRERA BLINDADA: 1. Chequeo local inmediato ---
+        if (RondinFlagsService.EstaEnviado(_auth.IdGuardia, tipoRondin))
         {
-            // MODO PRUEBAS: Solo confiamos en el flag local para bloquear.
-            if (RondinFlagsService.EstaEnviado(_auth.IdGuardia, tipoRondin))
-            {
-                await Shell.Current.DisplayAlertAsync("Ya completado",
-                    $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya se envió en esta sesión de prueba.", "OK");
-                await Shell.Current.GoToAsync("//MainPage");
-                return;
-            }
+            await Shell.Current.DisplayAlertAsync("Ya completado",
+                $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya se envió en este dispositivo hoy.", "OK");
+            await Shell.Current.GoToAsync(".."); // Cambio crucial aquí
+            return;
         }
-        else
+
+        // --- BARRERA BLINDADA: 2. Chequeo en servidor ---
+        if (!AppConstants.ModoPruebas)
         {
-            // MODO PRODUCCIÓN: Consultamos la BD real para evitar duplicidad global
             var hoy = DateTime.Today;
             var historialHoy = await _api.GetHistorialAsync(idGuardia: null, desde: hoy, hasta: hoy);
             if (historialHoy?.Any(h => h.TipoRondin == tipo) == true)
             {
                 await Shell.Current.DisplayAlertAsync("Ya completado",
                     $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya se encuentra registrado hoy en el sistema.", "OK");
-                await Shell.Current.GoToAsync("//MainPage");
+                await Shell.Current.GoToAsync(".."); // Cambio crucial aquí
                 return;
             }
         }
@@ -221,7 +218,7 @@ public partial class RondinViewModel : BaseViewModel
 
             string msg = $"Rondín guardado correctamente.\nIncidencias generadas: {resultado.IncidenciasGeneradas}";
             await Shell.Current.DisplayAlertAsync("Éxito", msg, "OK");
-            await Shell.Current.GoToAsync("//MainPage");
+            await Shell.Current.GoToAsync("..");
         }
         catch (Exception ex)
         {
@@ -235,7 +232,7 @@ public partial class RondinViewModel : BaseViewModel
 
     [RelayCommand]
     private async Task VolverAsync()
-        => await Shell.Current.GoToAsync("//MainPage");
+        => await Shell.Current.GoToAsync("..");
 }
 
 // ── Clases auxiliares ──────────────────────────────────────────────────

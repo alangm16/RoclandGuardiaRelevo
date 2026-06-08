@@ -87,20 +87,19 @@ public partial class MainViewModel : BaseViewModel
             var existeVentana = !string.IsNullOrEmpty(tipoRondin);
 
             // ── 3. ¿Ya realizó este guardia SU rondín? ───────────────────────────
-            //   ModoPruebas = true  → solo flags locales (se borran al reinstalar)
-            //   ModoPruebas = false → datos del servidor (fuente de verdad en producción)
-            bool guardiaYaEnvio;
+            bool guardiaYaEnvio = false;
 
-            if (AppConstants.ModoPruebas)
+            if (existeVentana)
             {
-                // En pruebas: checar únicamente el flag local de ESTE guardia
-                guardiaYaEnvio = existeVentana &&
-                                 RondinFlagsService.EstaEnviado(_auth.IdGuardia, tipoRondin);
-            }
-            else
-            {
-                // En producción: si existe en BD, ya está hecho (no importa en qué dispositivo)
-                guardiaYaEnvio = existeVentana && rondinesEnBd.Contains(tipoRondin);
+                // Unificamos las validaciones: Revisa tanto la memoria local como el servidor.
+                // Si cualquiera de las dos dice que ya se hizo, bloqueamos el botón.
+                bool enviadoLocal = RondinFlagsService.EstaEnviado(_auth.IdGuardia, tipoRondin);
+                bool enviadoServidor = rondinesEnBd.Contains(tipoRondin);
+
+                if (AppConstants.ModoPruebas)
+                    guardiaYaEnvio = enviadoLocal; // En pruebas manda el botón de Reiniciar Flags
+                else
+                    guardiaYaEnvio = enviadoLocal || enviadoServidor; // En producción, doble escudo
             }
 
             YaRealizado = guardiaYaEnvio;
