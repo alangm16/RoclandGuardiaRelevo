@@ -58,53 +58,48 @@ public partial class MainViewModel : BaseViewModel
             Bienvenida = $"¡Hola, {_auth.NombreGuardia}!";
             Iniciales = ObtenerIniciales(_auth.NombreGuardia);
 
-            // ── 1. Estado del día desde el servidor (siempre, para ambos modos) ─
-            //       Permite que el guardia ENTRANTE vea si el SALIENTE ya hizo su rondín.
             var hoy = DateTime.Today;
             List<string> rondinesEnBd = new();
 
+            // Declarado FUERA del try para que exista en todo el método
+            List<ChecklistResumenDto> historialHoy = new();
+
             try
             {
-                var historialHoy = await _api.GetHistorialAsync(idGuardia: null, desde: hoy, hasta: hoy);
-                rondinesEnBd = historialHoy?.Select(h => h.TipoRondin).Distinct().ToList()
-                               ?? new List<string>();
-            }
-            catch
-            {
-                // Si la consulta falla (sin red, etc.), dejamos los indicadores en gris
-                // pero no bloqueamos la app.
-            }
+                var resultado = await _api.GetHistorialAsync(idGuardia: null, desde: hoy, hasta: hoy);
+                if (resultado != null) historialHoy = resultado;
 
-            // Actualizar indicadores visuales desde BD (siempre)
+                // MAGIA AQUÍ: Solo tomamos en cuenta los rondines cuyo registro coincida 
+                // con las horas que tienes actualmente configuradas en AppConstants
+                rondinesEnBd = historialHoy
+                    .Where(h => AppConstants.EstaEnVentanaActual(h.TipoRondin, h.FechaHoraLocal))
+                    .Select(h => h.TipoRondin)
+                    .Distinct()
+                    .ToList();
+            }
+            catch { /* Falla silenciosa si no hay red */ }
+
             AmsEnviado = rondinesEnBd.Contains("AMS");
             BmeEnviado = rondinesEnBd.Contains("BME");
             AvsEnviado = rondinesEnBd.Contains("AVS");
             BveEnviado = rondinesEnBd.Contains("BVE");
 
-            // ── 2. Determinar ventana horaria actual ─────────────────────────────
             var horaActual = TimeOnly.FromDateTime(DateTime.Now);
             var tipoRondin = AppConstants.ObtenerTipoRondinSegunHoraYTurno(_auth.Turno, horaActual);
             var existeVentana = !string.IsNullOrEmpty(tipoRondin);
 
-            // ── 3. ¿Ya realizó este guardia SU rondín? ───────────────────────────
             bool guardiaYaEnvio = false;
-
             if (existeVentana)
             {
-                // Unificamos las validaciones: Revisa tanto la memoria local como el servidor.
-                // Si cualquiera de las dos dice que ya se hizo, bloqueamos el botón.
-                bool enviadoLocal = RondinFlagsService.EstaEnviado(_auth.IdGuardia, tipoRondin);
-                bool enviadoServidor = rondinesEnBd.Contains(tipoRondin);
-
-                if (AppConstants.ModoPruebas)
-                    guardiaYaEnvio = enviadoLocal; // En pruebas manda el botón de Reiniciar Flags
-                else
-                    guardiaYaEnvio = enviadoLocal || enviadoServidor; // En producción, doble escudo
+                // Verificamos si TÚ ya enviaste este rondín DENTRO de las horas configuradas
+                guardiaYaEnvio = historialHoy.Any(h =>
+                    h.IdGuardia == _auth.IdGuardia &&
+                    h.TipoRondin == tipoRondin &&
+                    AppConstants.EstaEnVentanaActual(h.TipoRondin, h.FechaHoraLocal));
             }
 
             YaRealizado = guardiaYaEnvio;
 
-            // ── 4. Estado del botón de acción ────────────────────────────────────
             if (!existeVentana)
             {
                 RondinDisponible = false;
@@ -115,15 +110,12 @@ public partial class MainViewModel : BaseViewModel
             {
                 RondinDisponible = false;
                 TipoRondinDisponible = AppConstants.DescripcionTipoRondin(tipoRondin);
-                TextoBotonAccion = AppConstants.ModoPruebas
-                    ? "Rondín ya enviado (reinicia flags para re-probar)"
-                    : "Rondín ya completado hoy ✓";
+                TextoBotonAccion = "Rondín ya completado en este horario ✓";
             }
             else
             {
                 RondinDisponible = true;
-                TipoRondinDisponible = AppConstants.DescripcionTipoRondin(tipoRondin)
-                    + (AppConstants.ModoPruebas ? " [PRUEBA]" : "");
+                TipoRondinDisponible = AppConstants.DescripcionTipoRondin(tipoRondin);
                 TextoBotonAccion = "Realizar rondín ahora";
             }
         }
@@ -142,10 +134,7 @@ public partial class MainViewModel : BaseViewModel
     {
         if (YaRealizado)
         {
-            var msg = AppConstants.ModoPruebas
-                ? "Ya enviaste este rondín en esta sesión. Usa 'Reiniciar flags' para volver a probar."
-                : "Ya realizaste este rondín hoy.";
-            await Shell.Current.DisplayAlertAsync("Información", msg, "OK");
+            await Shell.Current.DisplayAlertAsync("Información", "Ya realizaste este rondín el día de hoy según la base de datos.", "OK");
             return;
         }
 

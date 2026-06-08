@@ -34,25 +34,29 @@ public partial class RondinViewModel : BaseViewModel
     {
         tipoRondin = tipo;
 
-        // --- BARRERA BLINDADA: 1. Chequeo local inmediato ---
-        if (RondinFlagsService.EstaEnviado(_auth.IdGuardia, tipoRondin))
-        {
-            await Shell.Current.DisplayAlertAsync("Ya completado",
-                $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya se envió en este dispositivo hoy.", "OK");
-            await Shell.Current.GoToAsync(".."); // Cambio crucial aquí
-            return;
-        }
+        var hoy = DateTime.Today;
+        var historialHoy = await _api.GetHistorialAsync(idGuardia: null, desde: hoy, hasta: hoy);
 
-        // --- BARRERA BLINDADA: 2. Chequeo en servidor ---
-        if (!AppConstants.ModoPruebas)
+        if (historialHoy != null)
         {
-            var hoy = DateTime.Today;
-            var historialHoy = await _api.GetHistorialAsync(idGuardia: null, desde: hoy, hasta: hoy);
-            if (historialHoy?.Any(h => h.TipoRondin == tipo) == true)
+            // Filtramos únicamente los del tipo actual que estén dentro de las horas de prueba
+            var rondinesValidos = historialHoy
+                .Where(h => h.TipoRondin == tipo && AppConstants.EstaEnVentanaActual(tipo, h.FechaHoraLocal))
+                .ToList();
+
+            if (rondinesValidos.Any(h => h.IdGuardia == _auth.IdGuardia))
             {
                 await Shell.Current.DisplayAlertAsync("Ya completado",
-                    $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya se encuentra registrado hoy en el sistema.", "OK");
-                await Shell.Current.GoToAsync(".."); // Cambio crucial aquí
+                    $"Tú ya registraste el rondín {AppConstants.DescripcionTipoRondin(tipo)} en esta ventana de horas.", "OK");
+                await Shell.Current.GoToAsync("..");
+                return;
+            }
+
+            if (rondinesValidos.Any())
+            {
+                await Shell.Current.DisplayAlertAsync("Ya completado",
+                    $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya se encuentra registrado por el otro guardia en este horario.", "OK");
+                await Shell.Current.GoToAsync("..");
                 return;
             }
         }

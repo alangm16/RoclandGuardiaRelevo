@@ -137,19 +137,27 @@ public class ApiService
     public async Task<List<ChecklistResumenDto>?> GetHistorialAsync(int? idGuardia = null, DateTime? desde = null, DateTime? hasta = null)
     {
         SetAuthHeader();
+
+        // Quitamos las fechas de la URL para evitar el bug de conversión en el servidor
         var query = System.Web.HttpUtility.ParseQueryString(string.Empty);
         if (idGuardia.HasValue) query["idGuardia"] = idGuardia.Value.ToString();
-
-        // CORRECCIÓN DE FORMATO: Envía fechas puras para evitar rechazos del backend
-        if (desde.HasValue) query["desde"] = desde.Value.ToString("yyyy-MM-dd");
-        if (hasta.HasValue) query["hasta"] = hasta.Value.ToString("yyyy-MM-dd");
-
         var url = $"{ApiBasePath}/checklist/historial?{query}";
+
         try
         {
             var response = await _http.GetAsync(url);
             if (!response.IsSuccessStatusCode) return null;
-            return await response.Content.ReadFromJsonAsync<List<ChecklistResumenDto>>(JsonOpts);
+
+            var list = await response.Content.ReadFromJsonAsync<List<ChecklistResumenDto>>(JsonOpts);
+            if (list == null) return null;
+
+            // Filtramos de forma 100% segura usando la zona horaria del celular
+            if (desde.HasValue)
+                list = list.Where(x => x.FechaHoraLocal.Date >= desde.Value.Date).ToList();
+            if (hasta.HasValue)
+                list = list.Where(x => x.FechaHoraLocal.Date <= hasta.Value.Date).ToList();
+
+            return list;
         }
         catch { return null; }
     }

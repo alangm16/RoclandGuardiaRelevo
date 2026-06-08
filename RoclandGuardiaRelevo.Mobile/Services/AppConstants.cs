@@ -20,15 +20,30 @@ public static class AppConstants
 
     public const bool ModoPruebas = false;
 
-    public static readonly TimeOnly HoraInicioAMS = new(09, 45);
-    public static readonly TimeOnly HoraFinAMS = new(09, 48);
-    public static readonly TimeOnly HoraInicioBME = new(09, 48);
-    public static readonly TimeOnly HoraFinBME = new(09, 51);
+    public static readonly TimeOnly HoraInicioAMS = new(10, 00);
+    public static readonly TimeOnly HoraFinAMS = new(10, 04);
+    public static readonly TimeOnly HoraInicioBME = new(10, 04);
+    public static readonly TimeOnly HoraFinBME = new(10, 08);
 
-    public static readonly TimeOnly HoraInicioAVS = new(09, 55);
-    public static readonly TimeOnly HoraFinAVS = new(10, 00);
-    public static readonly TimeOnly HoraInicioBVE = new(10, 00);
-    public static readonly TimeOnly HoraFinBVE = new(10, 05);
+    public static readonly TimeOnly HoraInicioAVS = new(10, 10);
+    public static readonly TimeOnly HoraFinAVS = new(10, 14);
+    public static readonly TimeOnly HoraInicioBVE = new(10, 14);
+    public static readonly TimeOnly HoraFinBVE = new(10, 18);
+
+    // Analiza si un rondín hecho previamente encaja en la ventana de horas ACTUAL.
+    // Al cambiar las horas de prueba, los rondines viejos quedarán fuera y te dejará volver a probar.
+    public static bool EstaEnVentanaActual(string tipo, DateTime fechaHoraLocal)
+    {
+        var hora = TimeOnly.FromDateTime(fechaHoraLocal);
+        return tipo switch
+        {
+            "AMS" => hora >= HoraInicioAMS && hora < HoraFinAMS,
+            "BME" => hora >= HoraInicioBME && hora < HoraFinBME,
+            "AVS" => hora >= HoraInicioAVS && hora < HoraFinAVS,
+            "BVE" => hora >= HoraInicioBVE && hora < HoraFinBVE,
+            _ => false
+        };
+    }
 
     // Guardia A (diurno) puede hacer AMS y AVS; Guardia B (nocturno) puede hacer BME y BVE
     // El backend devuelve el turno del guardia: "Diurno" o "Nocturno"
