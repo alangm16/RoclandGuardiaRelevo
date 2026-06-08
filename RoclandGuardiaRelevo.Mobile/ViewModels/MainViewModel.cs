@@ -50,79 +50,20 @@ public partial class MainViewModel : BaseViewModel
     [RelayCommand]
     public async Task CargarDatosAsync()
     {
-        if (EstaCargando) return;
-        EstaCargando = true;
-
-        try
+        Bienvenida = $"¡Hola, {_auth.NombreGuardia}!";
+        Iniciales = ObtenerIniciales(_auth.NombreGuardia);
+        var horaActual = TimeOnly.FromDateTime(DateTime.Now);
+        var tipoRondin = AppConstants.ObtenerTipoRondinSegunHoraYTurno(_auth.Turno, horaActual);
+        RondinDisponible = !string.IsNullOrEmpty(tipoRondin);
+        if (RondinDisponible)
         {
-            Bienvenida = $"¡Hola, {_auth.NombreGuardia}!";
-            Iniciales = ObtenerIniciales(_auth.NombreGuardia);
-
-            // ── 1. Llamar al endpoint autoritativo ──────────────────────
-            // Pasamos la fecha LOCAL del dispositivo para que el servidor
-            // haga la conversión UTC correcta.
-            var estadoDia = await _api.GetEstadoDiaAsync(DateTime.Today);
-
-            // ── 2. Actualizar indicadores de estado del día ──────────────
-            // El servidor ya sabe qué existe; no hacemos aritmética aquí.
-            if (estadoDia != null && estadoDia.Rondines.Count > 0)
-            {
-                AmsEnviado = estadoDia.Rondines.FirstOrDefault(r => r.TipoRondin == "AMS")?.Existe ?? false;
-                BmeEnviado = estadoDia.Rondines.FirstOrDefault(r => r.TipoRondin == "BME")?.Existe ?? false;
-                AvsEnviado = estadoDia.Rondines.FirstOrDefault(r => r.TipoRondin == "AVS")?.Existe ?? false;
-                BveEnviado = estadoDia.Rondines.FirstOrDefault(r => r.TipoRondin == "BVE")?.Existe ?? false;
-            }
-            else
-            {
-                // Sin red: dejar todo en false (estado desconocido)
-                AmsEnviado = BmeEnviado = AvsEnviado = BveEnviado = false;
-            }
-
-            // ── 3. Determinar rondín disponible en este momento ──────────
-            var horaActual = TimeOnly.FromDateTime(DateTime.Now);
-            var tipoRondin = AppConstants.ObtenerTipoRondinSegunHoraYTurno(_auth.Turno, horaActual);
-            var existeVentana = !string.IsNullOrEmpty(tipoRondin);
-
-            // ── 4. ¿Ya lo hizo el guardia autenticado? ───────────────────
-            // Usamos el campo YoLoHice que calculó el servidor.
-            // Si no hay red, asumimos que NO (permite reintentar al volver conexión).
-            bool guardiaYaEnvio = false;
-            if (existeVentana && estadoDia != null)
-            {
-                guardiaYaEnvio = estadoDia.Rondines
-                    .FirstOrDefault(r => r.TipoRondin == tipoRondin)
-                    ?.YoLoHice ?? false;
-            }
-
-            YaRealizado = guardiaYaEnvio;
-
-            // ── 5. Actualizar texto/estado del botón ─────────────────────
-            if (!existeVentana)
-            {
-                RondinDisponible = false;
-                TipoRondinDisponible = "Ninguno (fuera de ventana horaria)";
-                TextoBotonAccion = "No disponible";
-            }
-            else if (guardiaYaEnvio)
-            {
-                RondinDisponible = false;
-                TipoRondinDisponible = AppConstants.DescripcionTipoRondin(tipoRondin);
-                TextoBotonAccion = "Rondín ya completado en este horario ✓";
-            }
-            else
-            {
-                RondinDisponible = true;
-                TipoRondinDisponible = AppConstants.DescripcionTipoRondin(tipoRondin);
-                TextoBotonAccion = "Realizar rondín ahora";
-            }
+            TipoRondinDisponible = AppConstants.DescripcionTipoRondin(tipoRondin);
+            TextoBotonAccion = "Realizar rondín ahora";
         }
-        catch (Exception ex)
+        else
         {
-            await Shell.Current.DisplayAlertAsync("Error", ex.Message, "OK");
-        }
-        finally
-        {
-            EstaCargando = false;
+            TipoRondinDisponible = "Ninguno (fuera de ventana horaria)";
+            TextoBotonAccion = "No disponible";
         }
     }
 
@@ -130,12 +71,6 @@ public partial class MainViewModel : BaseViewModel
     [RelayCommand]
     private async Task AccionPrincipalAsync()
     {
-        if (YaRealizado)
-        {
-            await Shell.Current.DisplayAlertAsync("Información", "Ya realizaste este rondín el día de hoy según la base de datos.", "OK");
-            return;
-        }
-
         if (!RondinDisponible)
         {
             await Shell.Current.DisplayAlertAsync("Fuera de horario", "No hay rondín disponible en este momento.", "OK");
@@ -149,24 +84,6 @@ public partial class MainViewModel : BaseViewModel
             await Shell.Current.DisplayAlertAsync("Error", "No se pudo determinar el tipo de rondín.", "OK");
             return;
         }
-
-        // --- NUEVA LÓGICA DE VALIDACIÓN ENTRE GUARDIAS ---
-        // Si el guardia actual es entrante (BME o BVE), verificamos si el saliente cumplió
-        if (tipoRondin == "BME" && !AmsEnviado)
-        {
-            bool continuar = await Shell.Current.DisplayAlertAsync("Aviso de Relevo",
-                "El guardia saliente no registró su rondín matutino. No se podrán comparar las anomalías automáticamente. ¿Deseas generar tu rondín de todos modos?",
-                "Sí, continuar", "Cancelar");
-            if (!continuar) return;
-        }
-        else if (tipoRondin == "BVE" && !AvsEnviado)
-        {
-            bool continuar = await Shell.Current.DisplayAlertAsync("Aviso de Relevo",
-                "El guardia saliente no registró su rondín vespertino. No se podrán comparar las anomalías automáticamente. ¿Deseas generar tu rondín de todos modos?",
-                "Sí, continuar", "Cancelar");
-            if (!continuar) return;
-        }
-        // --------------------------------------------------
 
         await Shell.Current.GoToAsync($"RondinPage?tipoRondin={tipoRondin}");
     }

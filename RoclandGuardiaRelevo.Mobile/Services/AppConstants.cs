@@ -20,15 +20,15 @@ public static class AppConstants
 
     public const bool ModoPruebas = false;
 
-    public static readonly TimeOnly HoraInicioAMS = new(10, 35);
-    public static readonly TimeOnly HoraFinAMS = new(10, 39);
-    public static readonly TimeOnly HoraInicioBME = new(10, 43);
-    public static readonly TimeOnly HoraFinBME = new(10, 47);
+    public static readonly TimeOnly HoraInicioAMS = new(12, 30);
+    public static readonly TimeOnly HoraFinAMS = new(12, 35);
+    public static readonly TimeOnly HoraInicioBME = new(12, 35);
+    public static readonly TimeOnly HoraFinBME = new(12, 40);
 
-    public static readonly TimeOnly HoraInicioAVS = new(10, 50);
-    public static readonly TimeOnly HoraFinAVS = new(10, 54);
-    public static readonly TimeOnly HoraInicioBVE = new(10, 58);
-    public static readonly TimeOnly HoraFinBVE = new(11, 02);
+    public static readonly TimeOnly HoraInicioAVS = new(12, 45);
+    public static readonly TimeOnly HoraFinAVS = new(12, 50);
+    public static readonly TimeOnly HoraInicioBVE = new(12, 50);
+    public static readonly TimeOnly HoraFinBVE = new(12, 55);
 
     /// <summary>
     /// [OBSOLETO — No usar en código nuevo]

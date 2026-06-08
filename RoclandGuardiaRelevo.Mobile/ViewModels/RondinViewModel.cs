@@ -33,49 +33,8 @@ public partial class RondinViewModel : BaseViewModel
     public async Task InicializarAsync(string tipo)
     {
         tipoRondin = tipo;
-
-        // ── Verificación autoritativa: ¿ya existe este rondín hoy? ──────
-        // Usamos el mismo endpoint que MainViewModel para garantizar
-        // consistencia. No duplicamos lógica de fechas.
-        var estadoDia = await _api.GetEstadoDiaAsync(DateTime.Today);
-
-        if (estadoDia != null)
-        {
-            var estadoEsteRondin = estadoDia.Rondines
-                .FirstOrDefault(r => r.TipoRondin == tipo);
-
-            if (estadoEsteRondin != null)
-            {
-                // ¿YO ya lo hice?
-                if (estadoEsteRondin.YoLoHice)
-                {
-                    await Shell.Current.DisplayAlertAsync("Ya completado",
-                        $"Tú ya registraste el rondín {AppConstants.DescripcionTipoRondin(tipo)} hoy.",
-                        "OK");
-                    await Shell.Current.GoToAsync("..");
-                    return;
-                }
-
-                // ¿El OTRO guardia ya lo hizo?
-                if (estadoEsteRondin.Existe)
-                {
-                    await Shell.Current.DisplayAlertAsync("Ya completado",
-                        $"El rondín {AppConstants.DescripcionTipoRondin(tipo)} ya fue registrado por otro guardia hoy.",
-                        "OK");
-                    await Shell.Current.GoToAsync("..");
-                    return;
-                }
-            }
-        }
-
-        Subtitulo = tipo switch
-        {
-            "AMS" or "AVS" => "Entrega de turno (Saliente)",
-            "BME" or "BVE" => "Recepción de turno (Entrante)",
-            _ => "Rondín"
-        };
-        InstruccionTexto = "Marca SÍ (correcto) o NO (problema) en cada punto. Al finalizar puedes agregar observaciones y fotos.";
-
+        Subtitulo = tipo switch { "AMS" or "AVS" => "Entrega de turno (Saliente)", "BME" or "BVE" => "Recepción de turno (Entrante)", _ => "Rondín" };
+        InstruccionTexto = "Marca SÍ (correcto) o NO (problema) en cada punto...";
         await CargarPuntosAsync();
     }
 
@@ -169,17 +128,6 @@ public partial class RondinViewModel : BaseViewModel
             return;
         }
 
-        // Última verificación en el servidor justo antes de iniciar el guardado
-        var hoy = DateTime.Today;
-        var historialHoy = await _api.GetHistorialAsync(idGuardia: null, desde: hoy, hasta: hoy);
-        if (historialHoy?.Any(h => h.TipoRondin == tipoRondin) == true)
-        {
-            await Shell.Current.DisplayAlertAsync("Ya completado",
-                "El otro guardia ya envió este rondín hace un momento.", "OK");
-            await Shell.Current.GoToAsync("//MainPage");
-            return;
-        }
-
         // Pedir firma
         var firmaVm = new FirmaViewModel();
         var firmaPage = new FirmaPage(firmaVm);
@@ -223,9 +171,6 @@ public partial class RondinViewModel : BaseViewModel
                     MimeType = foto.MimeType
                 });
             }
-
-            RondinFlagsService.RegistrarGuardiaActivo(_auth.IdGuardia);
-            RondinFlagsService.MarcarEnviado(_auth.IdGuardia, tipoRondin);
 
             string msg = $"Rondín guardado correctamente.\nIncidencias generadas: {resultado.IncidenciasGeneradas}";
             await Shell.Current.DisplayAlertAsync("Éxito", msg, "OK");
